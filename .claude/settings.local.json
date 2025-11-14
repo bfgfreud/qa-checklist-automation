@@ -9,7 +9,13 @@
       "Bash(git remote add:*)",
       "Bash(npm run build:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(tree:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(npm init -y)",
+      "Bash(git config:*)"
     ],
     "deny": [],
     "ask": []

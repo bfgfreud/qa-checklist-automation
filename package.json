@@ -24,5 +24,22 @@
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
     "eslint-config-next": "^14.2.0"
-  }
+  },
+  "main": "next.config.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bfgfreud/qa-checklist-automation.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bfgfreud/qa-checklist-automation/issues"
+  },
+  "homepage": "https://github.com/bfgfreud/qa-checklist-automation#readme",
+  "description": ""
 }
