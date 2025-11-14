@@ -15,7 +15,10 @@
       "Bash(git push:*)",
       "Bash(git remote set-url:*)",
       "Bash(npm init -y)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout /t 10)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

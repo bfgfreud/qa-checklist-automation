@@ -199,11 +199,13 @@ Otherwise, delegate to the appropriate specialized agent.
 - [x] Create agent prompts for generation
 - [x] Create domain README files
 - [x] Create all 4 specialized agents
-- [ ] User: Set up GitHub, Vercel, Supabase accounts
-- [ ] DevOps Agent (`devops-integration-specialist`): Initialize Next.js project with folder structure
-- [ ] DevOps Agent (`devops-integration-specialist`): Set up GitHub repository
-- [ ] DevOps Agent (`devops-integration-specialist`): Configure Vercel deployment
+- [x] User: Set up GitHub repository (https://github.com/bfgfreud/qa-checklist-automation)
+- [x] User: Set up Vercel deployment (https://qa-checklist-automation.vercel.app/)
+- [x] Initialize Next.js project with homepage
+- [x] Configure auto-deployment (push to main → Vercel deploys)
+- [ ] User: Set up Supabase project and get credentials
 - [ ] Backend Agent (`backend-dev-qa-automation`): Create database schema and migrations
+- [ ] Configure Supabase environment variables in Vercel
 
 ### Phase 1: Module Management
 - [ ] Create base_modules table (Backend Agent)
@@ -319,12 +321,14 @@ NEXT_PUBLIC_APP_URL=
 - **Code Quality**: Type-safe, linted, well-documented
 
 ## Current Status
-- **Phase**: Setup (Phase 0)
+- **Phase**: Setup (Phase 0) - Initial deployment complete ✅
+- **Live URL**: https://qa-checklist-automation.vercel.app/
+- **GitHub**: https://github.com/bfgfreud/qa-checklist-automation
+- **Deployment**: Auto-deploy on push to main ✅
 - **Next Steps**:
-  1. User to set up GitHub, Vercel, Supabase accounts
-  2. DevOps Agent to initialize project
-  3. Backend Agent to create database schema
-  4. Frontend Agent to build first UI components
+  1. Set up Supabase database
+  2. Create backend API structure
+  3. Build frontend features (Module Management, Projects, Checklists)
 
 ## Agent Creation Guide
 

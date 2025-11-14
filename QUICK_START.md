@@ -32,14 +32,14 @@ I've set up a complete project structure with:
 
 ## Next Steps
 
-### Step 1: Infrastructure Setup (You Do This)
-Follow `SETUP_GUIDE.md` to:
-1. Create GitHub repository
-2. Sign up for Vercel
-3. Create Supabase project
-4. Get API keys
+### Step 1: Infrastructure Setup ✅ COMPLETED
+You've already set up:
+1. ✅ GitHub repository: https://github.com/bfgfreud/qa-checklist-automation
+2. ✅ Vercel deployment: https://qa-checklist-automation.vercel.app/
+3. ✅ Auto-deployment enabled (push to main → live update)
+4. ⏳ Supabase - Still needs setup
 
-⏱️ Estimated time: 15-20 minutes
+**Next:** Create Supabase project following `SETUP_GUIDE.md` Step 3
 
 ### Step 2: Create Sub-Agents ✅ COMPLETED
 You've already created all 4 agents:
