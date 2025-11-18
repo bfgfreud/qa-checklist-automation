@@ -47,7 +47,11 @@
       "Bash(powershell -Command \"Remove-Item -Recurse -Force .next\")",
       "Bash(git rm:*)",
       "Bash(timeout 15 npm run dev:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(timeout /t 10 /nobreak)",
+      "Bash(python -m json.tool:*)",
+      "Bash(echo:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []
