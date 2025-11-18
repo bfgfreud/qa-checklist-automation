@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checklistService } from '@/lib/services/checklistService'
-import { updateTestResultSchema } from '@/lib/validations/checklist.schema'
+import { updateTestResultSchema, updateTestResultWithTesterSchema } from '@/lib/validations/checklist.schema'
 import { z } from 'zod'
 
 /**
  * PUT /api/checklists/test-results/[id]
  * Update a test result status, notes, and tested_by information
+ *
+ * If testerId is provided in the request body, validates that the test result belongs to that tester
+ * This enables multi-tester support where testers can only update their own results
  */
 export async function PUT(
   request: NextRequest,
@@ -26,10 +29,43 @@ export async function PUT(
       )
     }
 
-    // Validate input
+    // Check if testerId is provided (multi-tester mode)
+    if (body.testerId) {
+      // Use multi-tester validation
+      const validated = updateTestResultWithTesterSchema.parse(body)
+
+      const result = await checklistService.updateTestResultWithTester(
+        id,
+        validated.testerId,
+        {
+          status: validated.status,
+          notes: validated.notes
+        }
+      )
+
+      if (!result.success) {
+        let statusCode = 500
+        if (result.error === 'Test result not found') {
+          statusCode = 404
+        } else if (result.error === 'You can only update your own test results') {
+          statusCode = 403
+        }
+
+        return NextResponse.json(
+          { success: false, error: result.error },
+          { status: statusCode }
+        )
+      }
+
+      return NextResponse.json(
+        { success: true, data: result.data },
+        { status: 200 }
+      )
+    }
+
+    // Legacy mode (no testerId validation)
     const validated = updateTestResultSchema.parse(body)
 
-    // Update test result
     const result = await checklistService.updateTestResult(id, validated)
 
     if (!result.success) {

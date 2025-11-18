@@ -39,6 +39,9 @@ export const reorderChecklistModulesSchema = z.object({
  * Schema for updating a test result
  */
 export const updateTestResultSchema = z.object({
+  testerId: z.string()
+    .uuid('Invalid tester ID')
+    .optional(), // Optional for backward compatibility with legacy endpoints
   status: z.enum(['Pending', 'Pass', 'Fail', 'Skipped'], {
     message: 'Status must be Pending, Pass, Fail, or Skipped'
   }),
@@ -50,6 +53,22 @@ export const updateTestResultSchema = z.object({
   testedBy: z.string()
     .trim()
     .max(255, 'Tested by must be less than 255 characters')
+    .optional()
+    .nullable()
+})
+
+/**
+ * Schema for updating a test result with multi-tester validation
+ */
+export const updateTestResultWithTesterSchema = z.object({
+  testerId: z.string()
+    .uuid('Invalid tester ID'), // Required for multi-tester mode
+  status: z.enum(['Pending', 'Pass', 'Fail', 'Skipped'], {
+    message: 'Status must be Pending, Pass, Fail, or Skipped'
+  }),
+  notes: z.string()
+    .trim()
+    .max(2000, 'Notes must be less than 2000 characters')
     .optional()
     .nullable()
 })
@@ -93,5 +112,6 @@ export const filterTestResultsSchema = z.object({
 export type AddModuleToChecklistInput = z.infer<typeof addModuleToChecklistSchema>
 export type ReorderChecklistModulesInput = z.infer<typeof reorderChecklistModulesSchema>
 export type UpdateTestResultInput = z.infer<typeof updateTestResultSchema>
+export type UpdateTestResultWithTesterInput = z.infer<typeof updateTestResultWithTesterSchema>
 export type BulkUpdateTestResultsInput = z.infer<typeof bulkUpdateTestResultsSchema>
 export type FilterTestResultsInput = z.infer<typeof filterTestResultsSchema>

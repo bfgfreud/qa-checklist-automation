@@ -2,6 +2,9 @@
  * Shared type definitions for checklist and test execution
  */
 
+import { Tester } from './tester'
+import { TestCaseAttachment } from './attachment'
+
 export type TestStatus = 'Pending' | 'Pass' | 'Fail' | 'Skipped';
 
 /**
@@ -114,9 +117,67 @@ export interface AddModuleToChecklistDto {
  * DTO for updating a test result status
  */
 export interface UpdateTestResultDto {
+  testerId: string; // NEW: Required for multi-tester support
   status: TestStatus;
   notes?: string;
-  testedBy?: string;
+  testedBy?: string; // DEPRECATED: Use testerId instead
+}
+
+// ============================================
+// Multi-Tester Support Types
+// ============================================
+
+/**
+ * Test result with tester and attachment information
+ */
+export interface TestResultWithTester {
+  id: string;
+  tester: Tester;
+  status: TestStatus;
+  notes: string | null;
+  testedAt: string | null;
+  attachments: TestCaseAttachment[];
+}
+
+/**
+ * Test case with results from multiple testers
+ */
+export interface TestCaseWithResults {
+  testCase: {
+    id: string;
+    title: string;
+    description?: string;
+    priority: 'High' | 'Medium' | 'Low';
+  };
+  results: TestResultWithTester[];
+  overallStatus: TestStatus; // Weakest status across all testers
+}
+
+/**
+ * Module with multi-tester test results structure
+ */
+export interface ChecklistModuleWithMultiTesterResults {
+  id: string;
+  projectId: string;
+  moduleId: string;
+  moduleName: string;
+  moduleDescription?: string;
+  instanceLabel?: string;
+  instanceNumber: number;
+  orderIndex: number;
+  createdAt: string;
+  updatedAt: string;
+  testCases: TestCaseWithResults[];
+}
+
+/**
+ * Full project checklist with multi-tester support
+ */
+export interface ProjectChecklistWithTesters {
+  projectId: string;
+  projectName: string;
+  modules: ChecklistModuleWithMultiTesterResults[];
+  assignedTesters: Tester[];
 }
 
 /**

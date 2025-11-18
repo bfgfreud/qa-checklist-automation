@@ -4,7 +4,12 @@ import {
   ChecklistTestResult,
   ChecklistModuleWithResults,
   ProjectChecklist,
-  ModuleProgressStats
+  ModuleProgressStats,
+  TestStatus,
+  ProjectChecklistWithTesters,
+  ChecklistModuleWithMultiTesterResults,
+  TestCaseWithResults,
+  TestResultWithTester
 } from '@/types/checklist'
 import {
   AddModuleToChecklistInput,
@@ -12,6 +17,8 @@ import {
   UpdateTestResultInput,
   BulkUpdateTestResultsInput
 } from '../validations/checklist.schema'
+import { testerService } from './testerService'
+import { attachmentService } from './attachmentService'
 
 // ============================================
 // Helper Functions
@@ -46,6 +53,25 @@ function calculateModuleStats(testResults: ChecklistTestResult[]): {
     skippedTests,
     progress
   }
+}
+
+/**
+ * Calculate the weakest (most severe) status from an array of statuses
+ * Priority: Fail > Skipped > Pass > Pending
+ */
+export function getWeakestStatus(statuses: TestStatus[]): TestStatus {
+  if (statuses.length === 0) return 'Pending'
+
+  const priority: Record<TestStatus, number> = {
+    'Fail': 4,
+    'Skipped': 3,
+    'Pass': 2,
+    'Pending': 1
+  }
+
+  return statuses.reduce((weakest, current) =>
+    priority[current] > priority[weakest] ? current : weakest
+  , 'Pending')
 }
 
 // ============================================
@@ -289,13 +315,52 @@ export const checklistService = {
 
       console.log(`[DEBUG] Found ${testcases?.length || 0} test cases for module ${input.moduleId}`)
 
-      // Create test result entries for all test cases (status = 'Pending')
-      if (testcases && testcases.length > 0) {
-        const testResultInserts = testcases.map(tc => ({
-          project_checklist_module_id: checklistModule.id,
-          testcase_id: tc.id,
-          status: 'Pending' as const
-        }))
+      // Get all assigned testers for this project
+      const testersResult = await testerService.getProjectTesters(input.projectId)
+
+      if (!testersResult.success) {
+        console.error('Error fetching project testers:', testersResult.error)
+        // Rollback checklist module creation
+        await supabase
+          .from('project_checklist_modules')
+          .delete()
+          .eq('id', checklistModule.id)
+        return { success: false, error: 'Failed to fetch project testers' }
+      }
+
+      const assignedTesters = testersResult.data || []
+
+      // If no testers assigned, use Legacy Tester as fallback
+      if (assignedTesters.length === 0) {
+        console.log('[WARN] No testers assigned to project, using Legacy Tester as fallback')
+
+        const { data: legacyTester } = await supabase
+          .from('testers')
+          .select('*')
+          .eq('email', 'legacy@system')
+          .single()
+
+        if (legacyTester) {
+          assignedTesters.push(legacyTester)
+        }
+      }
+
+      // Create test result entries for ALL testers × ALL test cases (status = 'Pending')
+      if (testcases && testcases.length > 0 && assignedTesters.length > 0) {
+        const testResultInserts = []
+
+        for (const tester of assignedTesters) {
+          for (const tc of testcases) {
+            testResultInserts.push({
+              project_checklist_module_id: checklistModule.id,
+              testcase_id: tc.id,
+              tester_id: tester.id,
+              status: 'Pending' as const
+            })
+          }
+        }
+
+        console.log(`[DEBUG] Creating ${testResultInserts.length} test results (${assignedTesters.length} testers × ${testcases.length} test cases)`)
 
         const { error: resultsError } = await supabase
           .from('checklist_test_results')
@@ -577,6 +642,235 @@ export const checklistService = {
       }
     } catch (error) {
       console.error('Unexpected error in getChecklistProgress:', error)
+      return { success: false, error: 'Internal server error' }
+    }
+  },
+
+  /**
+   * Get project checklist with multi-tester results structure
+   * Returns data organized by: Module > Test Case > Tester Results
+   */
+  async getProjectChecklistWithTesters(projectId: string): Promise<{
+    success: boolean
+    data?: ProjectChecklistWithTesters
+    error?: string
+  }> {
+    try {
+      // Verify project exists
+      const { data: project, error: projectError } = await supabase
+        .from('test_projects')
+        .select('id, name')
+        .eq('id', projectId)
+        .single()
+
+      if (projectError || !project) {
+        return { success: false, error: 'Project not found' }
+      }
+
+      // Get assigned testers
+      const testersResult = await testerService.getProjectTesters(projectId)
+      if (!testersResult.success) {
+        return { success: false, error: testersResult.error || 'Failed to fetch testers' }
+      }
+      const assignedTesters = testersResult.data || []
+
+      // Get all checklist modules for this project
+      const { data: checklistModules, error: modulesError } = await supabase
+        .from('project_checklist_modules')
+        .select(`
+          id,
+          project_id,
+          module_id,
+          instance_label,
+          instance_number,
+          order_index,
+          created_at,
+          updated_at,
+          base_modules (
+            name,
+            description
+          )
+        `)
+        .eq('project_id', projectId)
+        .order('order_index', { ascending: true })
+
+      if (modulesError) {
+        console.error('Error fetching checklist modules:', modulesError)
+        return { success: false, error: 'Failed to fetch checklist modules' }
+      }
+
+      // Get all test results with testers and testcases
+      const { data: testResults, error: resultsError } = await supabase
+        .from('checklist_test_results')
+        .select(`
+          id,
+          project_checklist_module_id,
+          testcase_id,
+          tester_id,
+          status,
+          notes,
+          tested_at,
+          created_at,
+          updated_at,
+          base_testcases (
+            id,
+            title,
+            description,
+            priority
+          ),
+          testers (
+            id,
+            name,
+            email,
+            color,
+            created_at
+          )
+        `)
+        .in('project_checklist_module_id', (checklistModules || []).map(m => m.id))
+
+      if (resultsError) {
+        console.error('Error fetching test results:', resultsError)
+        return { success: false, error: 'Failed to fetch test results' }
+      }
+
+      // Get all attachments for these test results
+      const testResultIds = (testResults || []).map(r => r.id)
+      const { data: attachments } = await supabase
+        .from('test_case_attachments')
+        .select('*')
+        .in('test_result_id', testResultIds)
+
+      // Group attachments by test result ID
+      const attachmentsByResultId: Record<string, any[]> = {}
+      ;(attachments || []).forEach(att => {
+        if (!attachmentsByResultId[att.test_result_id]) {
+          attachmentsByResultId[att.test_result_id] = []
+        }
+        attachmentsByResultId[att.test_result_id].push(att)
+      })
+
+      // Build the multi-tester structure
+      const modules: ChecklistModuleWithMultiTesterResults[] = (checklistModules || []).map(module => {
+        const baseModule = Array.isArray(module.base_modules)
+          ? module.base_modules[0]
+          : module.base_modules
+
+        // Get all test results for this module
+        const moduleResults = (testResults || []).filter(
+          r => r.project_checklist_module_id === module.id
+        )
+
+        // Group by test case ID
+        const resultsByTestCase: Record<string, any[]> = {}
+        moduleResults.forEach(result => {
+          if (!resultsByTestCase[result.testcase_id]) {
+            resultsByTestCase[result.testcase_id] = []
+          }
+          resultsByTestCase[result.testcase_id].push(result)
+        })
+
+        // Build test cases with results
+        const testCases: TestCaseWithResults[] = Object.entries(resultsByTestCase).map(([testcaseId, results]) => {
+          // Get testcase info from first result
+          const firstResult = results[0]
+          const testcase = Array.isArray(firstResult.base_testcases)
+            ? firstResult.base_testcases[0]
+            : firstResult.base_testcases
+
+          // Build tester results
+          const testerResults: TestResultWithTester[] = results.map(result => {
+            const tester = Array.isArray(result.testers)
+              ? result.testers[0]
+              : result.testers
+
+            return {
+              id: result.id,
+              tester: tester,
+              status: result.status,
+              notes: result.notes,
+              testedAt: result.tested_at,
+              attachments: attachmentsByResultId[result.id] || []
+            }
+          })
+
+          // Calculate overall status (weakest)
+          const statuses = testerResults.map(r => r.status)
+          const overallStatus = getWeakestStatus(statuses)
+
+          return {
+            testCase: {
+              id: testcase?.id || testcaseId,
+              title: testcase?.title || 'Unknown',
+              description: testcase?.description,
+              priority: (testcase?.priority || 'Medium') as 'High' | 'Medium' | 'Low'
+            },
+            results: testerResults,
+            overallStatus
+          }
+        })
+
+        return {
+          id: module.id,
+          projectId: module.project_id,
+          moduleId: module.module_id,
+          moduleName: baseModule?.name || 'Unknown Module',
+          moduleDescription: baseModule?.description,
+          instanceLabel: module.instance_label || undefined,
+          instanceNumber: module.instance_number,
+          orderIndex: module.order_index,
+          createdAt: module.created_at,
+          updatedAt: module.updated_at,
+          testCases
+        }
+      })
+
+      const checklist: ProjectChecklistWithTesters = {
+        projectId: project.id,
+        projectName: project.name,
+        modules,
+        assignedTesters
+      }
+
+      return { success: true, data: checklist }
+    } catch (error) {
+      console.error('Unexpected error in getProjectChecklistWithTesters:', error)
+      return { success: false, error: 'Internal server error' }
+    }
+  },
+
+  /**
+   * Update a test result with tester validation
+   * Ensures that only the assigned tester can update their own result
+   */
+  async updateTestResultWithTester(
+    resultId: string,
+    testerId: string,
+    input: Omit<UpdateTestResultInput, 'testerId'>
+  ): Promise<{
+    success: boolean
+    data?: ChecklistTestResult
+    error?: string
+  }> {
+    try {
+      // Verify the result belongs to this tester
+      const { data: existing, error: fetchError } = await supabase
+        .from('checklist_test_results')
+        .select('id, tester_id')
+        .eq('id', resultId)
+        .single()
+
+      if (fetchError || !existing) {
+        return { success: false, error: 'Test result not found' }
+      }
+
+      if (existing.tester_id !== testerId) {
+        return { success: false, error: 'You can only update your own test results' }
+      }
+
+      // Proceed with update using existing updateTestResult
+      return await this.updateTestResult(resultId, input as any)
+    } catch (error) {
+      console.error('Unexpected error in updateTestResultWithTester:', error)
       return { success: false, error: 'Internal server error' }
     }
   }

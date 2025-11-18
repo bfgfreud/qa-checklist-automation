@@ -46,7 +46,8 @@
       "Bash(rd /s /q \".next\")",
       "Bash(powershell -Command \"Remove-Item -Recurse -Force .next\")",
       "Bash(git rm:*)",
-      "Bash(timeout 15 npm run dev:*)"
+      "Bash(timeout 15 npm run dev:*)",
+      "Bash(cd:*)"
     ],
     "deny": [],
     "ask": []
