@@ -49,15 +49,45 @@ Add these in Vercel Dashboard → Settings → Environment Variables:
 
 ## Current Status
 ✅ Homepage deployed with Bonfire Gathering branding
-⏳ Awaiting Supabase setup
-⏳ Ready for feature development
+✅ Supabase setup complete
+✅ Module Library feature complete with CSV import/export
+⏳ Ready for Projects page development
+
+## Documentation
+
+### Quick Start
+- [QUICK_START.md](./QUICK_START.md) - Get started quickly
+- [SETUP_GUIDE.md](./SETUP_GUIDE.md) - Detailed setup instructions
+
+### Feature Documentation
+- [docs/MODULE_LIBRARY_GUIDE.md](./docs/MODULE_LIBRARY_GUIDE.md) - Complete Module Library documentation
+- [docs/CSV_IMPORT_EXPORT.md](./docs/CSV_IMPORT_EXPORT.md) - CSV import/export guide
+
+### Technical Documentation
+- [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) - Folder structure and architecture
+- [API_TESTING_GUIDE.md](./API_TESTING_GUIDE.md) - API endpoint testing
+- [SUPABASE_TEST_INSTRUCTIONS.md](./SUPABASE_TEST_INSTRUCTIONS.md) - Database testing
+
+## Completed Features
+
+### 1. Module Library (`/modules`)
+- ✅ Full CRUD operations for modules and test cases
+- ✅ Drag-and-drop reordering
+- ✅ Draft mode with save/cancel
+- ✅ CSV bulk import/export
+- ✅ Multi-tag support
+- ✅ Search and filtering
+- ✅ Duplicate name validation
+- ✅ Collapse/expand functionality
+
+See [docs/MODULE_LIBRARY_GUIDE.md](./docs/MODULE_LIBRARY_GUIDE.md) for detailed documentation.
 
 ## Next Steps
-1. Set up Supabase database
-2. Create database schema (Backend Agent)
-3. Build Module Management feature
-4. Build Project Management feature
-5. Build Checklist Builder and Execution features
+1. Build Projects page (similar to Modules, manages test projects)
+2. Build Checklist Builder (select modules → generate project checklists)
+3. Build Checklist Execution (run checklists, mark pass/fail)
+4. Add user authentication
+5. Add tag filtering in Module Library
 
 ---
-Last updated: 2025-01-14
+Last updated: 2025-01-17

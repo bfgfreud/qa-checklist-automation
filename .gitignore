@@ -16,6 +16,8 @@ node_modules
 # misc
 .DS_Store
 *.pem
+nul
+*.tmp
 
 # debug
 npm-debug.log*
@@ -32,3 +34,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# archive
+/archive/
+
+# IDE
+.vscode/
+.idea/

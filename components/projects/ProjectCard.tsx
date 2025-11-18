@@ -1,0 +1,223 @@
+'use client';
+
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import { Project } from '@/types/project';
+import { format, isPast, isToday } from 'date-fns';
+import { Button } from '@/components/ui/Button';
+
+export interface ProjectCardProps {
+  project: Project;
+  onEdit: (project: Project) => void;
+  onDelete: (project: Project) => void;
+  isModified?: boolean;
+}
+
+export const ProjectCard: React.FC<ProjectCardProps> = ({
+  project,
+  onEdit,
+  onDelete,
+  isModified = false,
+}) => {
+  const router = useRouter();
+
+  const handleViewChecklist = () => {
+    router.push(`/projects/${project.id}/checklist`);
+  };
+  // Status badge colors
+  const statusColors = {
+    Draft: 'bg-gray-500/20 text-gray-300 border border-gray-500/30',
+    'In Progress': 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
+    Completed: 'bg-green-500/20 text-green-300 border border-green-500/30',
+  };
+
+  // Priority badge colors
+  const priorityColors = {
+    High: 'bg-red-500/20 text-red-400 border border-red-500/30',
+    Medium: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
+    Low: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
+  };
+
+  // Platform badge colors
+  const platformColors: Record<string, string> = {
+    iOS: 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
+    Android: 'bg-green-500/20 text-green-300 border border-green-500/30',
+    Web: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
+    All: 'bg-orange-500/20 text-orange-300 border border-orange-500/30',
+    Other: 'bg-gray-500/20 text-gray-300 border border-gray-500/30',
+  };
+
+  // Format due date
+  const formatDueDate = (dateStr: string | undefined) => {
+    if (!dateStr) return null;
+
+    try {
+      const date = new Date(dateStr);
+      const isPastDue = isPast(date) && !isToday(date);
+      const formattedDate = format(date, 'MMM dd, yyyy');
+
+      return (
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400 text-sm">Due:</span>
+          <span
+            className={`text-sm font-medium ${
+              isPastDue ? 'text-red-400' : 'text-gray-300'
+            }`}
+          >
+            {formattedDate}
+            {isPastDue && ' (Overdue)'}
+            {isToday(date) && ' (Today)'}
+          </span>
+        </div>
+      );
+    } catch (err) {
+      return null;
+    }
+  };
+
+  return (
+    <div
+      className={`bg-dark-secondary border rounded-lg p-6 hover:border-primary-500 transition-all duration-200 ${
+        isModified ? 'border-orange-500' : 'border-dark-primary'
+      }`}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+            {project.name}
+            {isModified && (
+              <span className="text-xs px-2 py-0.5 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-full">
+                Modified
+              </span>
+            )}
+          </h3>
+
+          {/* Badges */}
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            {/* Version Badge */}
+            {project.version && (
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                v{project.version}
+              </span>
+            )}
+
+            {/* Platform Badge */}
+            {project.platform && (
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                  platformColors[project.platform] || platformColors.Other
+                }`}
+              >
+                {project.platform}
+              </span>
+            )}
+
+            {/* Priority Badge */}
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                priorityColors[project.priority]
+              }`}
+            >
+              {project.priority}
+            </span>
+
+            {/* Status Badge */}
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                statusColors[project.status]
+              }`}
+            >
+              {project.status}
+            </span>
+          </div>
+
+          {/* Description */}
+          {project.description && (
+            <p className="text-gray-400 text-sm mb-3 line-clamp-2">
+              {project.description}
+            </p>
+          )}
+
+          {/* Due Date */}
+          {formatDueDate(project.dueDate)}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 ml-4">
+          <button
+            onClick={() => onEdit(project)}
+            className="p-2 text-gray-400 hover:text-primary-500 hover:bg-dark-elevated rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+            aria-label="Edit project"
+            title="Edit project"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
+            </svg>
+          </button>
+          <button
+            onClick={() => onDelete(project)}
+            className="p-2 text-gray-400 hover:text-red-500 hover:bg-dark-elevated rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
+            aria-label="Delete project"
+            title="Delete project"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Footer - Actions and Created Date */}
+      <div className="pt-3 border-t border-dark-primary flex items-center justify-between">
+        <div className="text-xs text-gray-500">
+          Created {format(new Date(project.createdAt), 'MMM dd, yyyy')}
+        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={handleViewChecklist}
+          className="flex items-center gap-2"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+            />
+          </svg>
+          View Checklist
+        </Button>
+      </div>
+    </div>
+  );
+};
