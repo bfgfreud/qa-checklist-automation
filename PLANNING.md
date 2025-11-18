@@ -249,63 +249,88 @@ ALTER TABLE checklist_test_results
 
 ---
 
-### Phase 3: Realtime Infrastructure
-**Owner**: Backend Agent
-**Duration**: ~6 hours
-**Status**: NOT STARTED
+### ~~Phase 3: Realtime Infrastructure~~ (SKIPPED)
+**Owner**: N/A
+**Duration**: N/A
+**Status**: SKIPPED - Using Smart Polling Instead
 
-#### Supabase Realtime Setup
+#### Decision: No Supabase Realtime
 
-**1. Enable Realtime on Tables**
-```sql
-ALTER PUBLICATION supabase_realtime
-  ADD TABLE checklist_test_results,
-  ADD TABLE test_case_attachments,
-  ADD TABLE project_checklist_modules;
-```
+**Reason**: Cost optimization for free-tier deployment
+- Supabase Realtime requires paid subscription ($25/month minimum)
+- Project is a free tool for small teams (2-3 testers)
+- Occasional use (not daily/continuous)
 
-**2. Create Realtime Helper** (`/lib/realtime/supabaseRealtime.ts`)
+**Alternative Approach**: Smart Polling with React Query
+- Poll backend every 5-10 seconds (configurable)
+- 100% free within Vercel/Supabase limits
+- Near-instant updates (5-10 second latency acceptable for QA work)
+- Optimistic UI for current user's actions (instant feedback)
+
+**See**: `docs/FRONTEND_UX_ARCHITECTURE.md` for complete architecture
+
+#### What We Use Instead
+
+**1. React Query Polling** (Frontend)
 ```typescript
-export function subscribeToChecklistChanges(
-  projectId: string,
-  onUpdate: (payload) => void
-) {
-  return supabase
-    .channel(`checklist:${projectId}`)
-    .on('postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'checklist_test_results'
-      },
-      onUpdate
-    )
-    .subscribe();
-}
+const { data: checklist } = useQuery({
+  queryKey: ['checklist', projectId],
+  queryFn: () => fetchChecklist(projectId),
+  refetchInterval: 5000, // Poll every 5 seconds
+  refetchIntervalInBackground: true,
+  staleTime: 0,
+});
 ```
 
-**3. Optimistic Update Helper** (`/lib/utils/optimisticUpdate.ts`)
+**2. Optimistic UI Updates** (Frontend)
 ```typescript
-export async function optimisticUpdate(
-  localUpdate: () => void,
-  apiCall: () => Promise<any>,
-  rollback: () => void
-) {
-  localUpdate(); // Instant UI update
-  try {
-    await apiCall(); // Sync to backend
-  } catch (error) {
-    rollback(); // Revert if failed
-    throw error;
-  }
-}
+// User's own updates are instant (optimistic)
+const updateMutation = useMutation({
+  mutationFn: (data) => updateTestResult(data),
+  onMutate: async (newData) => {
+    // Update local cache immediately
+    queryClient.setQueryData(['checklist', projectId], (old) => ({
+      ...old,
+      ...newData,
+    }));
+  },
+  onError: (err, variables, context) => {
+    // Rollback on failure
+    queryClient.setQueryData(['checklist', projectId], context.previousData);
+  },
+});
 ```
+
+**3. Seamless Background Sync**
+- Other testers' updates appear within 5-10 seconds
+- No page refresh, no disruption
+- Subtle animations for updates
+
+#### Cost Analysis
+
+**Polling Load** (3 testers, 2 hours/day, 5 days/week):
+- 3 users × 12 requests/min × 120 min × 5 days × 4 weeks = 86,400 requests/month
+
+**Free Tier Limits**:
+- Supabase: 500,000 requests/month (17% usage) ✅
+- Vercel: 100,000 invocations/month (86% usage) ✅
+
+**Verdict**: Completely free, scalable to 5+ testers
+
+#### Benefits Over Realtime
+
+- ✅ $0 cost (vs $25+/month)
+- ✅ Simpler implementation (no WebSocket management)
+- ✅ Works offline (can queue updates)
+- ✅ No connection limits
+- ⚠️ 5-10 second latency (acceptable for QA collaboration)
 
 #### Testing
-- [ ] Open 2 browser windows side-by-side
-- [ ] Update status in Window 1 → appears in Window 2 within 1 second
-- [ ] Verify realtime updates don't cause UI flicker
+- [ ] Verify 5-second polling works smoothly
+- [ ] Test optimistic updates with rollback
+- [ ] Open 2 browser windows → verify updates appear within 10 seconds
 - [ ] Test with 3+ simultaneous users
+- [ ] Monitor request volume stays within free tier
 
 ---
 
@@ -575,7 +600,7 @@ After each phase:
 | Phase 0: Cleanup | 4 hours | DevOps Agent |
 | Phase 1: Database | 6 hours | Backend Agent |
 | Phase 2: APIs | 12 hours | Backend Agent |
-| Phase 3: Realtime | 6 hours | Backend Agent |
+| ~~Phase 3: Realtime~~ | SKIPPED | N/A (Using Smart Polling) |
 | Phase 4: Frontend | 16 hours | Frontend Agent |
 | Phase 5: Integration | 10 hours | All Agents |
 | Phase 6: Cleanup | 4 hours | DevOps Agent |
