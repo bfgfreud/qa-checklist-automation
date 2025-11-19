@@ -126,8 +126,17 @@ export default function ProjectEditPage() {
     priority?: Priority;
     tags?: string[];
   }) => {
-    // Check if this is a custom module creation (id === 'custom')
-    if (data.moduleId === 'custom') {
+    console.log('[ADD MODULE] handleAddModule called with data:', {
+      moduleId: data.moduleId,
+      instanceLabel: data.instanceLabel,
+      selectedModuleToCopyExists: !!selectedModuleToCopy,
+      selectedModuleToCopyName: selectedModuleToCopy?.moduleName,
+      selectedModuleToCopyTestCount: selectedModuleToCopy?.testResults?.length || 0
+    });
+
+    // Check if this is a custom module creation (id === 'custom', NOT copy-custom-*)
+    if (data.moduleId === 'custom' && !selectedModuleToCopy) {
+      console.log('[ADD MODULE] Creating new custom module (moduleId is exactly "custom" and no copy source)');
       handleCreateCustomModule(data);
       setSelectedModuleToCopy(null);
       return;
@@ -135,6 +144,20 @@ export default function ProjectEditPage() {
 
     // Check if we're copying a module (has custom testcases)
     if (selectedModuleToCopy) {
+      // Determine if source module is custom (no library reference)
+      const isSourceCustom = !selectedModuleToCopy.moduleId ||
+                            selectedModuleToCopy.moduleId.startsWith('custom-') ||
+                            selectedModuleToCopy._isCustom;
+
+      console.log('[COPY MODULE] Source module:', {
+        id: selectedModuleToCopy.id,
+        name: selectedModuleToCopy.moduleName,
+        isCustom: isSourceCustom,
+        moduleId: selectedModuleToCopy.moduleId,
+        testResultsCount: selectedModuleToCopy.testResults?.length || 0,
+        testResults: selectedModuleToCopy.testResults?.map(tr => ({ id: tr.id, title: tr.testcaseTitle }))
+      });
+
       const copiedModule: DraftModule = {
         ...JSON.parse(JSON.stringify(selectedModuleToCopy)), // Deep clone
         id: `draft-copy-${Date.now()}`,
@@ -142,6 +165,7 @@ export default function ProjectEditPage() {
         instanceNumber: draftModules.filter(m => !m._isDeleted).length + 1,
         orderIndex: draftModules.filter(m => !m._isDeleted).length,
         _isDraft: true,
+        _isCustom: isSourceCustom, // Preserve custom flag for save logic
         testResults: selectedModuleToCopy.testResults?.map((tr, index) => ({
           ...tr,
           id: `draft-copy-${Date.now()}-${index}`,
@@ -150,6 +174,14 @@ export default function ProjectEditPage() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
+
+      console.log('[COPY MODULE] Copied module:', {
+        id: copiedModule.id,
+        name: copiedModule.moduleName,
+        isCustom: copiedModule._isCustom,
+        testResultsCount: copiedModule.testResults?.length || 0,
+        testResults: copiedModule.testResults?.map(tr => ({ id: tr.id, title: tr.testcaseTitle }))
+      });
 
       setDraftModules((prev) => [...prev, copiedModule]);
       setSelectedModuleToCopy(null);
@@ -243,19 +275,29 @@ export default function ProjectEditPage() {
 
   // Copy module from checklist (with current customizations)
   const handleCopyModule = (sourceModule: DraftModule) => {
+    console.log('[COPY CLICK] Copy button clicked on module:', {
+      id: sourceModule.id,
+      name: sourceModule.moduleName,
+      isCustom: sourceModule._isCustom,
+      moduleId: sourceModule.moduleId,
+      testResultsCount: sourceModule.testResults?.length || 0
+    });
+
     // Store the source module to copy
     setSelectedModuleToCopy(sourceModule);
 
     // Check if this is a custom module
     if (sourceModule._isCustom || !sourceModule.moduleId || sourceModule.moduleId.startsWith('custom-')) {
+      console.log('[COPY CLICK] This is a custom module, creating synthetic module object');
       // For custom modules, create a synthetic module object to open the dialog
-      setSelectedModule({
-        id: sourceModule.moduleId || 'custom',
+      // Use a special prefix to avoid conflicting with 'custom' (which means "create new")
+      const syntheticModule = {
+        id: `copy-custom-${sourceModule.id}`, // Use unique ID that won't conflict with "custom"
         name: sourceModule.moduleName,
         description: sourceModule.moduleDescription || '',
         testCases: sourceModule.testResults?.map((tr) => ({
           id: tr.testcaseId || tr.id,
-          moduleId: sourceModule.moduleId || 'custom',
+          moduleId: sourceModule.moduleId || `copy-custom-${sourceModule.id}`,
           title: tr.testcaseTitle,
           description: tr.testcaseDescription,
           priority: tr.testcasePriority,
@@ -267,9 +309,12 @@ export default function ProjectEditPage() {
         order: sourceModule.orderIndex || 0,
         createdAt: sourceModule.createdAt,
         updatedAt: sourceModule.updatedAt,
-      });
+      };
+      console.log('[COPY CLICK] Synthetic module:', { id: syntheticModule.id, testCasesCount: syntheticModule.testCases.length });
+      setSelectedModule(syntheticModule);
       setIsDialogOpen(true);
     } else {
+      console.log('[COPY CLICK] This is a library module, finding original');
       // For library modules, find the original module from library to open dialog
       const originalModule = availableModules.find((m) => m.id === sourceModule.moduleId);
       if (originalModule) {
@@ -527,8 +572,11 @@ export default function ProjectEditPage() {
             throw new Error(`Failed to get module ID for: ${module.moduleName}`);
           }
 
-          // Add custom testcases to the custom module
-          const customTestcases = module.testResults?.filter(tr => tr.testcaseId?.startsWith('custom-tc-')) || [];
+          // Add ALL testcases to the custom module
+          // Custom modules don't have library testcases, so all testResults are custom
+          const customTestcases = module.testResults || [];
+          console.log(`[SAVE DEBUG] Saving ${customTestcases.length} testcases for custom module "${module.moduleName}"`);
+
           for (const testcase of customTestcases) {
             const tcResponse = await fetch(`/api/checklists/modules/${newModuleId}/testcases`, {
               method: 'POST',
@@ -545,6 +593,8 @@ export default function ProjectEditPage() {
               const errorResult = await tcResponse.json();
               console.error(`Failed to add custom testcase "${testcase.testcaseTitle}":`, errorResult);
               // Continue with other testcases even if one fails
+            } else {
+              console.log(`[SAVE DEBUG] Saved testcase: "${testcase.testcaseTitle}"`);
             }
           }
         } else {
