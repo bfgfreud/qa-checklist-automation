@@ -1,10 +1,22 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Project } from '@/types/project';
+import { Tester } from '@/types/tester';
 import { format, isPast, isToday } from 'date-fns';
 import { Button } from '@/components/ui/Button';
+import { TesterList } from '@/components/ui/TesterList';
+import { ProgressBar } from '@/components/ui/ProgressBar';
+
+export interface ProjectProgress {
+  total: number;
+  pending: number;
+  passed: number;
+  failed: number;
+  skipped: number;
+  progress: number;
+}
 
 export interface ProjectCardProps {
   project: Project;
@@ -20,9 +32,62 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   isModified = false,
 }) => {
   const router = useRouter();
+  const [testers, setTesters] = useState<Tester[]>([]);
+  const [progress, setProgress] = useState<ProjectProgress | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch testers and progress on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch assigned testers
+        const testersRes = await fetch(`/api/projects/${project.id}/testers`);
+        if (testersRes.ok) {
+          const testersResult = await testersRes.json();
+          if (testersResult.success) {
+            setTesters(testersResult.data || []);
+          }
+        }
+
+        // Fetch project progress
+        const progressRes = await fetch(`/api/checklists/${project.id}`);
+        if (progressRes.ok) {
+          const progressResult = await progressRes.json();
+          if (progressResult.success) {
+            // Calculate progress from checklist data
+            const modules = progressResult.data.modules || [];
+            const allTests = modules.flatMap((m: { testResults?: unknown[] }) => m.testResults || []);
+            const total = allTests.length;
+            const pending = allTests.filter((t: { status: string }) => t.status === 'Pending').length;
+            const passed = allTests.filter((t: { status: string }) => t.status === 'Pass').length;
+            const failed = allTests.filter((t: { status: string }) => t.status === 'Fail').length;
+            const skipped = allTests.filter((t: { status: string }) => t.status === 'Skipped').length;
+            const completed = passed + failed + skipped;
+            const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+            setProgress({
+              total,
+              pending,
+              passed,
+              failed,
+              skipped,
+              progress: progressPercent,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching project data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [project.id]);
 
   const handleViewChecklist = () => {
-    router.push(`/projects/${project.id}/checklist`);
+    router.push(`/projects/${project.id}`);
   };
   // Status badge colors
   const statusColors = {
@@ -190,8 +255,51 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         </div>
       </div>
 
+      {/* Progress Section */}
+      {progress && progress.total > 0 && (
+        <div className="mt-4 pt-4 border-t border-dark-primary">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-400">Progress</span>
+            <span className="text-sm font-semibold text-primary-500">
+              {progress.progress}%
+            </span>
+          </div>
+          <ProgressBar value={progress.progress} max={100} size="md" showLabel={false} />
+
+          {/* Test Stats */}
+          <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+            <div className="bg-dark-elevated rounded px-2 py-1.5">
+              <div className="text-xs text-gray-500">Pending</div>
+              <div className="text-sm font-semibold text-gray-400">{progress.pending}</div>
+            </div>
+            <div className="bg-dark-elevated rounded px-2 py-1.5">
+              <div className="text-xs text-gray-500">Pass</div>
+              <div className="text-sm font-semibold text-green-400">{progress.passed}</div>
+            </div>
+            <div className="bg-dark-elevated rounded px-2 py-1.5">
+              <div className="text-xs text-gray-500">Fail</div>
+              <div className="text-sm font-semibold text-red-400">{progress.failed}</div>
+            </div>
+            <div className="bg-dark-elevated rounded px-2 py-1.5">
+              <div className="text-xs text-gray-500">Skip</div>
+              <div className="text-sm font-semibold text-yellow-400">{progress.skipped}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Testers Section */}
+      {testers.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-dark-primary">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-400">Assigned Testers</span>
+            <TesterList testers={testers} maxVisible={3} size="sm" />
+          </div>
+        </div>
+      )}
+
       {/* Footer - Actions and Created Date */}
-      <div className="pt-3 border-t border-dark-primary flex items-center justify-between">
+      <div className="mt-4 pt-4 border-t border-dark-primary flex items-center justify-between">
         <div className="text-xs text-gray-500">
           Created {format(new Date(project.createdAt), 'MMM dd, yyyy')}
         </div>
@@ -215,7 +323,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
             />
           </svg>
-          View Checklist
+          View Project
         </Button>
       </div>
     </div>

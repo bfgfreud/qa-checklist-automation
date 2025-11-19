@@ -13,6 +13,7 @@ import {
 } from '@/types/checklist'
 import {
   AddModuleToChecklistInput,
+  AddCustomTestcaseInput,
   ReorderChecklistModulesInput,
   UpdateTestResultInput,
   BulkUpdateTestResultsInput
@@ -99,22 +100,22 @@ export const checklistService = {
         return { success: false, error: 'Project not found' }
       }
 
-      // Get all checklist modules for this project
+      // Get all checklist modules for this project (HYBRID model - read copied data)
       const { data: checklistModules, error: modulesError } = await supabase
         .from('project_checklist_modules')
         .select(`
           id,
           project_id,
           module_id,
+          module_name,
+          module_description,
+          is_custom,
+          tags,
           instance_label,
           instance_number,
           order_index,
           created_at,
-          updated_at,
-          base_modules (
-            name,
-            description
-          )
+          updated_at
         `)
         .eq('project_id', projectId)
         .order('order_index', { ascending: true })
@@ -124,24 +125,23 @@ export const checklistService = {
         return { success: false, error: 'Failed to fetch checklist modules' }
       }
 
-      // Get all test results for this project
+      // Get all test results for this project (HYBRID model - read copied data)
       const { data: testResults, error: resultsError } = await supabase
         .from('checklist_test_results')
         .select(`
           id,
           project_checklist_module_id,
           testcase_id,
+          testcase_title,
+          testcase_description,
+          testcase_priority,
+          is_custom,
           status,
           notes,
           tested_by,
           tested_at,
           created_at,
-          updated_at,
-          base_testcases (
-            title,
-            description,
-            priority
-          )
+          updated_at
         `)
         .in('project_checklist_module_id', (checklistModules || []).map(m => m.id))
         .order('created_at', { ascending: true })
@@ -158,17 +158,13 @@ export const checklistService = {
           acc[moduleId] = []
         }
 
-        const testcase = Array.isArray(result.base_testcases)
-          ? result.base_testcases[0]
-          : result.base_testcases
-
         acc[moduleId].push({
           id: result.id,
           projectChecklistModuleId: result.project_checklist_module_id,
-          testcaseId: result.testcase_id,
-          testcaseTitle: testcase?.title || 'Unknown',
-          testcaseDescription: testcase?.description || undefined,
-          testcasePriority: (testcase?.priority || 'Medium') as 'High' | 'Medium' | 'Low',
+          testcaseId: result.testcase_id || undefined, // Optional reference
+          testcaseTitle: result.testcase_title, // Use copied data
+          testcaseDescription: result.testcase_description || undefined, // Use copied data
+          testcasePriority: (result.testcase_priority || 'Medium') as 'High' | 'Medium' | 'Low', // Use copied data
           status: result.status,
           notes: result.notes || undefined,
           testedBy: result.tested_by || undefined,
@@ -182,19 +178,15 @@ export const checklistService = {
 
       // Build modules with results and stats
       const modulesWithResults: ChecklistModuleWithResults[] = (checklistModules || []).map(module => {
-        const baseModule = Array.isArray(module.base_modules)
-          ? module.base_modules[0]
-          : module.base_modules
-
         const testResults = resultsByModule[module.id] || []
         const stats = calculateModuleStats(testResults)
 
         return {
           id: module.id,
           projectId: module.project_id,
-          moduleId: module.module_id,
-          moduleName: baseModule?.name || 'Unknown Module',
-          moduleDescription: baseModule?.description || undefined,
+          moduleId: module.module_id || undefined, // Optional reference
+          moduleName: module.module_name, // Use copied data
+          moduleDescription: module.module_description || undefined, // Use copied data
           instanceLabel: module.instance_label || undefined,
           instanceNumber: module.instance_number,
           orderIndex: module.order_index,
@@ -227,7 +219,8 @@ export const checklistService = {
   },
 
   /**
-   * Add a module instance to project checklist
+   * Add a module instance to project checklist (HYBRID model)
+   * Supports both library modules (copied with reference) and custom modules (no reference)
    * Auto-calculates instance_number and creates test result entries
    */
   async addModuleToChecklist(input: AddModuleToChecklistInput): Promise<{
@@ -247,29 +240,75 @@ export const checklistService = {
         return { success: false, error: 'Project not found' }
       }
 
-      // Verify module exists
-      const { data: module } = await supabase
-        .from('base_modules')
-        .select('id, name, description')
-        .eq('id', input.moduleId)
-        .single()
+      let moduleName: string
+      let moduleDescription: string | undefined
+      let libraryModuleId: string | null = null
+      let testcases: Array<{id: string, title: string, description: string | null, priority: string}> = []
 
-      if (!module) {
-        return { success: false, error: 'Module not found' }
+      // HYBRID MODEL: Handle library module (copy data + keep reference)
+      if (!input.isCustom && input.moduleId) {
+        // Fetch module data from library
+        const { data: module, error: moduleError } = await supabase
+          .from('base_modules')
+          .select('id, name, description')
+          .eq('id', input.moduleId)
+          .single()
+
+        if (moduleError || !module) {
+          return { success: false, error: 'Module not found in library' }
+        }
+
+        moduleName = module.name
+        moduleDescription = module.description || undefined
+        libraryModuleId = module.id
+
+        // Fetch testcases from library (to be copied)
+        const { data: libraryTestcases, error: testcasesError } = await supabase
+          .from('base_testcases')
+          .select('id, title, description, priority')
+          .eq('module_id', input.moduleId)
+          .order('order_index', { ascending: true })
+
+        if (testcasesError) {
+          console.error('Error fetching test cases:', testcasesError)
+          return { success: false, error: 'Failed to fetch module test cases' }
+        }
+
+        testcases = libraryTestcases || []
+        console.log(`[DEBUG] Found ${testcases.length} test cases for library module ${input.moduleId}`)
+      }
+      // HYBRID MODEL: Handle custom module (no library reference)
+      else if (input.isCustom && input.moduleName) {
+        moduleName = input.moduleName
+        moduleDescription = input.moduleDescription || undefined
+        libraryModuleId = null
+        testcases = [] // Custom modules start with 0 testcases
+        console.log(`[DEBUG] Creating custom module "${moduleName}" with 0 test cases`)
+      } else {
+        return { success: false, error: 'Invalid input: must provide either moduleId or moduleName' }
       }
 
-      // Calculate instance_number (count existing instances of this module + 1)
-      const { data: existingInstances } = await supabase
-        .from('project_checklist_modules')
-        .select('instance_number')
-        .eq('project_id', input.projectId)
-        .eq('module_id', input.moduleId)
-        .order('instance_number', { ascending: false })
-        .limit(1)
+      // Calculate instance_number
+      // For library modules: count existing instances of the same library module
+      // For custom modules: count all custom modules (they don't have moduleId)
+      let instanceNumber = 1
 
-      const instanceNumber = existingInstances && existingInstances.length > 0
-        ? existingInstances[0].instance_number + 1
-        : 1
+      if (!input.isCustom && libraryModuleId) {
+        const { data: existingInstances } = await supabase
+          .from('project_checklist_modules')
+          .select('instance_number')
+          .eq('project_id', input.projectId)
+          .eq('module_id', libraryModuleId)
+          .order('instance_number', { ascending: false })
+          .limit(1)
+
+        instanceNumber = existingInstances && existingInstances.length > 0
+          ? existingInstances[0].instance_number + 1
+          : 1
+      } else {
+        // For custom modules, just use 1 (or could implement custom numbering)
+        instanceNumber = 1
+      }
 
       // Get next order_index for this project
       const { data: maxOrderData } = await supabase
@@ -283,12 +322,16 @@ export const checklistService = {
         ? maxOrderData[0].order_index + 1
         : 0
 
-      // Create checklist module entry
+      // Create checklist module entry with COPIED data (HYBRID model)
       const { data: checklistModule, error: moduleError } = await supabase
         .from('project_checklist_modules')
         .insert([{
           project_id: input.projectId,
-          module_id: input.moduleId,
+          module_id: libraryModuleId, // Optional reference (null for custom)
+          module_name: moduleName, // COPIED data (always populated)
+          module_description: moduleDescription || null, // COPIED data
+          is_custom: input.isCustom || false, // Custom flag
+          tags: input.tags || null, // Optional tags
           instance_label: input.instanceLabel || null,
           instance_number: instanceNumber,
           order_index: nextOrderIndex
@@ -300,20 +343,6 @@ export const checklistService = {
         console.error('Error creating checklist module:', moduleError)
         return { success: false, error: 'Failed to add module to checklist' }
       }
-
-      // Get all test cases for this module
-      const { data: testcases, error: testcasesError } = await supabase
-        .from('base_testcases')
-        .select('id, title, description, priority')
-        .eq('module_id', input.moduleId)
-        .order('order_index', { ascending: true })
-
-      if (testcasesError) {
-        console.error('Error fetching test cases:', testcasesError)
-        return { success: false, error: 'Failed to fetch module test cases' }
-      }
-
-      console.log(`[DEBUG] Found ${testcases?.length || 0} test cases for module ${input.moduleId}`)
 
       // Get all assigned testers for this project
       const testersResult = await testerService.getProjectTesters(input.projectId)
@@ -345,7 +374,9 @@ export const checklistService = {
         }
       }
 
-      // Create test result entries for ALL testers × ALL test cases (status = 'Pending')
+      // Create test result entries with COPIED testcase data (HYBRID model)
+      // For library modules: copy all testcases from library
+      // For custom modules: no testcases initially
       if (testcases && testcases.length > 0 && assignedTesters.length > 0) {
         const testResultInserts = []
 
@@ -353,7 +384,11 @@ export const checklistService = {
           for (const tc of testcases) {
             testResultInserts.push({
               project_checklist_module_id: checklistModule.id,
-              testcase_id: tc.id,
+              testcase_id: tc.id, // Optional reference (for library testcases)
+              testcase_title: tc.title, // COPIED data (always populated)
+              testcase_description: tc.description || null, // COPIED data
+              testcase_priority: tc.priority || 'Medium', // COPIED data
+              is_custom: false, // Library testcases
               tester_id: tester.id,
               status: 'Pending' as const
             })
@@ -377,39 +412,34 @@ export const checklistService = {
         }
       }
 
-      // Fetch the complete module with results
+      // Fetch the complete module with results (HYBRID model - read copied data)
       const { data: testResults } = await supabase
         .from('checklist_test_results')
         .select(`
           id,
           project_checklist_module_id,
           testcase_id,
+          testcase_title,
+          testcase_description,
+          testcase_priority,
+          is_custom,
           status,
           notes,
           tested_by,
           tested_at,
           created_at,
-          updated_at,
-          base_testcases (
-            title,
-            description,
-            priority
-          )
+          updated_at
         `)
         .eq('project_checklist_module_id', checklistModule.id)
 
       const mappedResults: ChecklistTestResult[] = (testResults || []).map(result => {
-        const testcase = Array.isArray(result.base_testcases)
-          ? result.base_testcases[0]
-          : result.base_testcases
-
         return {
           id: result.id,
           projectChecklistModuleId: result.project_checklist_module_id,
-          testcaseId: result.testcase_id,
-          testcaseTitle: testcase?.title || 'Unknown',
-          testcaseDescription: testcase?.description || undefined,
-          testcasePriority: (testcase?.priority || 'Medium') as 'High' | 'Medium' | 'Low',
+          testcaseId: result.testcase_id || undefined, // Optional reference
+          testcaseTitle: result.testcase_title, // Use copied data
+          testcaseDescription: result.testcase_description || undefined, // Use copied data
+          testcasePriority: (result.testcase_priority || 'Medium') as 'High' | 'Medium' | 'Low', // Use copied data
           status: result.status,
           notes: result.notes || undefined,
           testedBy: result.tested_by || undefined,
@@ -424,9 +454,9 @@ export const checklistService = {
       const moduleWithResults: ChecklistModuleWithResults = {
         id: checklistModule.id,
         projectId: checklistModule.project_id,
-        moduleId: checklistModule.module_id,
-        moduleName: module.name,
-        moduleDescription: module.description || undefined,
+        moduleId: checklistModule.module_id || undefined, // Optional reference
+        moduleName: checklistModule.module_name, // Use copied data
+        moduleDescription: checklistModule.module_description || undefined, // Use copied data
         instanceLabel: checklistModule.instance_label || undefined,
         instanceNumber: checklistModule.instance_number,
         orderIndex: checklistModule.order_index,
@@ -464,6 +494,92 @@ export const checklistService = {
       return { success: true }
     } catch (error) {
       console.error('Unexpected error in removeModuleFromChecklist:', error)
+      return { success: false, error: 'Internal server error' }
+    }
+  },
+
+  /**
+   * Add a custom testcase to a checklist module (HYBRID model)
+   * Creates test results for all specified testers with copied testcase data (no library reference)
+   */
+  async addCustomTestcase(input: AddCustomTestcaseInput): Promise<{
+    success: boolean
+    data?: ChecklistTestResult[]
+    error?: string
+  }> {
+    try {
+      // Verify module exists
+      const { data: module } = await supabase
+        .from('project_checklist_modules')
+        .select('id')
+        .eq('id', input.projectChecklistModuleId)
+        .single()
+
+      if (!module) {
+        return { success: false, error: 'Checklist module not found' }
+      }
+
+      // Handle empty testerIds - use Legacy Tester as fallback
+      let testerIds = input.testerIds
+      if (testerIds.length === 0) {
+        console.log('[WARN] No testers provided for custom testcase, using Legacy Tester as fallback')
+
+        const { data: legacyTester } = await supabase
+          .from('testers')
+          .select('*')
+          .eq('email', 'legacy@system')
+          .single()
+
+        if (legacyTester) {
+          testerIds = [legacyTester.id]
+        } else {
+          return { success: false, error: 'No testers available and Legacy Tester not found' }
+        }
+      }
+
+      // Create test result entries for each tester with COPIED testcase data
+      const testResultInserts = testerIds.map(testerId => ({
+        project_checklist_module_id: input.projectChecklistModuleId,
+        testcase_id: null, // Custom testcase - no library reference
+        testcase_title: input.testcaseTitle, // COPIED data
+        testcase_description: input.testcaseDescription || null, // COPIED data
+        testcase_priority: input.testcasePriority || 'Medium', // COPIED data
+        is_custom: true, // Custom testcase flag
+        tester_id: testerId,
+        status: 'Pending' as const
+      }))
+
+      const { data: testResults, error: insertError } = await supabase
+        .from('checklist_test_results')
+        .insert(testResultInserts)
+        .select()
+
+      if (insertError) {
+        console.error('Error creating custom testcase:', insertError)
+        return { success: false, error: 'Failed to create custom testcase' }
+      }
+
+      // Map results to ChecklistTestResult type
+      const mappedResults: ChecklistTestResult[] = (testResults || []).map(result => ({
+        id: result.id,
+        projectChecklistModuleId: result.project_checklist_module_id,
+        testcaseId: undefined, // No reference
+        testcaseTitle: result.testcase_title,
+        testcaseDescription: result.testcase_description || undefined,
+        testcasePriority: (result.testcase_priority || 'Medium') as 'High' | 'Medium' | 'Low',
+        status: result.status,
+        notes: result.notes || undefined,
+        testedBy: result.tested_by || undefined,
+        testedAt: result.tested_at || undefined,
+        createdAt: result.created_at,
+        updatedAt: result.updated_at
+      }))
+
+      console.log(`[DEBUG] Created ${testResults.length} custom test results for ${input.testerIds.length} testers`)
+
+      return { success: true, data: mappedResults }
+    } catch (error) {
+      console.error('Unexpected error in addCustomTestcase:', error)
       return { success: false, error: 'Internal server error' }
     }
   },

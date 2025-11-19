@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Project, CreateProjectDto, UpdateProjectDto, ProjectStatus } from '@/types/project';
 import { Button } from '@/components/ui/Button';
 import { ProjectCard } from '@/components/projects/ProjectCard';
@@ -10,6 +11,8 @@ type SortField = 'name' | 'dueDate' | 'createdAt' | 'status';
 type SortOrder = 'asc' | 'desc';
 
 export default function ProjectsPage() {
+  const router = useRouter();
+
   // Server state (source of truth from API)
   const [projects, setProjects] = useState<Project[]>([]);
 
@@ -116,24 +119,36 @@ export default function ProjectsPage() {
       return;
     }
 
-    // Create temporary ID for new project
-    const tempId = `temp-project-${Date.now()}`;
-    const newProject: Project = {
-      id: tempId,
-      name: projectName,
-      description: data.description,
-      version: data.version,
-      platform: data.platform,
-      status: data.status || 'Draft',
-      priority: data.priority || 'Medium',
-      dueDate: data.dueDate,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    // Create project immediately via API
+    try {
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: projectName,
+          description: data.description,
+          version: data.version,
+          platform: data.platform,
+          status: data.status || 'Draft',
+          priority: data.priority || 'Medium',
+          due_date: data.dueDate,
+        }),
+      });
+      const result = await response.json();
 
-    setDraftProjects([...draftProjects, newProject]);
-    setHasUnsavedChanges(true);
-    setIsProjectFormOpen(false);
+      if (result.success && result.data) {
+        success('Project created successfully');
+        setIsProjectFormOpen(false);
+
+        // Redirect to edit mode immediately
+        router.push(`/projects/${result.data.id}/edit`);
+      } else {
+        throw new Error(result.error || 'Failed to create project');
+      }
+    } catch (err) {
+      console.error('Error creating project:', err);
+      error(err instanceof Error ? err.message : 'Failed to create project');
+    }
   };
 
   const handleUpdateProject = async (data: CreateProjectDto | UpdateProjectDto) => {

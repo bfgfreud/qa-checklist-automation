@@ -51,7 +51,12 @@
       "Bash(timeout /t 10 /nobreak)",
       "Bash(python -m json.tool:*)",
       "Bash(echo:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(rd /s /q .next 2)",
+      "Bash(powershell -Command:*)",
+      "Bash(set PORT=3005)",
+      "Bash(timeout /t 2)",
+      "Bash(rd /s /q \"C:\\Code Stuff\\QA Checklist Automation\\app\\api\\checklists\\modules\\[moduleId]\")"
     ],
     "deny": [],
     "ask": []
