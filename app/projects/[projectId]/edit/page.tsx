@@ -246,11 +246,36 @@ export default function ProjectEditPage() {
     // Store the source module to copy
     setSelectedModuleToCopy(sourceModule);
 
-    // Find the original module from library to open dialog
-    const originalModule = availableModules.find((m) => m.id === sourceModule.moduleId);
-    if (originalModule) {
-      setSelectedModule(originalModule);
+    // Check if this is a custom module
+    if (sourceModule._isCustom || !sourceModule.moduleId || sourceModule.moduleId.startsWith('custom-')) {
+      // For custom modules, create a synthetic module object to open the dialog
+      setSelectedModule({
+        id: sourceModule.moduleId || 'custom',
+        name: sourceModule.moduleName,
+        description: sourceModule.moduleDescription || '',
+        testCases: sourceModule.testResults?.map((tr) => ({
+          id: tr.testcaseId || tr.id,
+          moduleId: sourceModule.moduleId || 'custom',
+          title: tr.testcaseTitle,
+          description: tr.testcaseDescription,
+          priority: tr.testcasePriority,
+          order: 0,
+          createdAt: tr.createdAt,
+          updatedAt: tr.updatedAt,
+        })) || [],
+        tags: [],
+        order: sourceModule.orderIndex || 0,
+        createdAt: sourceModule.createdAt,
+        updatedAt: sourceModule.updatedAt,
+      });
       setIsDialogOpen(true);
+    } else {
+      // For library modules, find the original module from library to open dialog
+      const originalModule = availableModules.find((m) => m.id === sourceModule.moduleId);
+      if (originalModule) {
+        setSelectedModule(originalModule);
+        setIsDialogOpen(true);
+      }
     }
   };
 
