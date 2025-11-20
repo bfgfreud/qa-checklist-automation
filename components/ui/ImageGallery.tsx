@@ -141,6 +141,15 @@ export function ImageGallery({ attachments, onDelete, readonly = false, compact 
               </svg>
             </button>
 
+            {/* Image Info - Top Left */}
+            <div className="absolute top-4 left-4 bg-dark-secondary/90 text-white p-3 rounded-lg max-w-sm">
+              <div className="font-semibold text-sm">{selectedImage.file_name}</div>
+              <div className="text-xs text-gray-400 mt-1">
+                {selectedImage.file_size ? `${(selectedImage.file_size / 1024).toFixed(1)} KB • ` : ''}
+                {new Date(selectedImage.uploaded_at).toLocaleString()}
+              </div>
+            </div>
+
             {/* Image */}
             <img
               src={selectedImage.file_url}
@@ -148,15 +157,6 @@ export function ImageGallery({ attachments, onDelete, readonly = false, compact 
               className="max-w-full max-h-[90vh] object-contain"
               onClick={(e) => e.stopPropagation()}
             />
-
-            {/* Image Info */}
-            <div className="absolute bottom-4 left-4 right-4 bg-dark-secondary/90 text-white p-4 rounded-lg">
-              <div className="font-semibold">{selectedImage.file_name}</div>
-              <div className="text-sm text-gray-400 mt-1">
-                {selectedImage.file_size ? `${(selectedImage.file_size / 1024).toFixed(1)} KB • ` : ''}
-                {new Date(selectedImage.uploaded_at).toLocaleString()}
-              </div>
-            </div>
 
             {/* Navigation */}
             {attachments.length > 1 && (

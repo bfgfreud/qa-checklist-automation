@@ -84,48 +84,36 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
     }
   };
 
-  // Handle clipboard paste
-  const handlePaste = async (e: ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
+  // Handle clipboard paste for this specific testcase
+  const handlePasteFromClipboard = async () => {
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      const imageFiles: File[] = [];
 
-    const imageFiles: File[] = [];
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-
-      // Only handle image types
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile();
-        if (file) {
-          imageFiles.push(file);
+      for (const item of clipboardItems) {
+        for (const type of item.types) {
+          if (type.startsWith('image/')) {
+            const blob = await item.getType(type);
+            const file = new File([blob], `pasted-image-${Date.now()}.png`, { type });
+            imageFiles.push(file);
+          }
         }
       }
-    }
 
-    if (imageFiles.length > 0) {
-      e.preventDefault();
-      const fileList = imageFiles.reduce((acc, file, index) => {
+      if (imageFiles.length > 0) {
         const dt = new DataTransfer();
-        for (let i = 0; i < imageFiles.length; i++) {
-          dt.items.add(imageFiles[i]);
+        for (const file of imageFiles) {
+          dt.items.add(file);
         }
-        return dt.files;
-      }, new DataTransfer().files);
-
-      await handleFileSelect(fileList);
+        await handleFileSelect(dt.files);
+      } else {
+        alert('No images found in clipboard. Please copy an image first.');
+      }
+    } catch (error) {
+      console.error('Error reading clipboard:', error);
+      alert('Failed to read from clipboard. Please make sure you have copied an image and granted clipboard permissions.');
     }
   };
-
-  // Add/remove paste event listener
-  useEffect(() => {
-    if (compact) {
-      document.addEventListener('paste', handlePaste);
-      return () => {
-        document.removeEventListener('paste', handlePaste);
-      };
-    }
-  }, [compact, testResultId]);
 
   return (
     <div ref={containerRef}>
@@ -165,18 +153,15 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => {
-              // Trigger paste manually if possible, or just show info
-              alert('Use Ctrl+V (or Cmd+V on Mac) to paste images from clipboard while on this page');
-            }}
+            onClick={handlePasteFromClipboard}
             disabled={uploading}
             className="flex-1 text-xs"
-            title="Use Ctrl+V or Cmd+V to paste"
+            title="Paste image from clipboard"
           >
             <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
-            Paste (Ctrl+V)
+            Paste
           </Button>
         </div>
       ) : (

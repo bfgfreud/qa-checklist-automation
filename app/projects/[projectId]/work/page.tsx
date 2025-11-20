@@ -706,7 +706,7 @@ export default function WorkingModePage() {
                                   {/* Column 1: Status Buttons (25% = 3 cols) */}
                                   <div className="col-span-3">
                                     <label className="block text-xs font-medium text-gray-400 mb-1.5">Status</label>
-                                    <div className="flex flex-col gap-1.5">
+                                    <div className="flex flex-wrap gap-1.5">
                                       {(['Pending', 'Pass', 'Fail', 'Skipped'] as TestStatus[]).map((status) => (
                                         <button
                                           key={status}
@@ -716,7 +716,7 @@ export default function WorkingModePage() {
                                             }
                                           }}
                                           disabled={!isOwnResult}
-                                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                          className={`px-2 py-1 rounded text-xs font-medium transition-colors flex-1 min-w-[60px] ${
                                             result.status === status
                                               ? status === 'Pass' ? 'bg-green-500 text-white' :
                                                 status === 'Fail' ? 'bg-red-500 text-white' :
