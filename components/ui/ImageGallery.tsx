@@ -7,9 +7,10 @@ interface ImageGalleryProps {
   attachments: TestCaseAttachment[];
   onDelete?: (attachmentId: string) => void;
   readonly?: boolean;
+  compact?: boolean;
 }
 
-export function ImageGallery({ attachments, onDelete, readonly = false }: ImageGalleryProps) {
+export function ImageGallery({ attachments, onDelete, readonly = false, compact = false }: ImageGalleryProps) {
   const [selectedImage, setSelectedImage] = useState<TestCaseAttachment | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -51,11 +52,18 @@ export function ImageGallery({ attachments, onDelete, readonly = false }: ImageG
   return (
     <>
       {/* Thumbnail Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+      <div className={compact
+        ? "flex flex-wrap gap-1.5"
+        : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
+      }>
         {attachments.map((attachment) => (
           <div
             key={attachment.id}
-            className="relative group aspect-square bg-dark-bg rounded-lg overflow-hidden border border-dark-border hover:border-primary-500 transition-colors"
+            className={`relative group bg-dark-bg rounded overflow-hidden border border-dark-border hover:border-primary-500 transition-colors ${
+              compact
+                ? "w-16 h-16"
+                : "aspect-square"
+            }`}
           >
             {/* Image */}
             <img
@@ -66,14 +74,18 @@ export function ImageGallery({ attachments, onDelete, readonly = false }: ImageG
             />
 
             {/* Overlay */}
-            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+            <div className={`absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center ${
+              compact ? "gap-0.5" : "gap-2"
+            }`}>
               {/* View Button */}
               <button
                 onClick={() => setSelectedImage(attachment)}
-                className="p-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                className={`bg-primary-500 text-white rounded hover:bg-primary-600 transition-colors ${
+                  compact ? "p-1" : "p-2"
+                }`}
                 title="View full size"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={compact ? "w-3 h-3" : "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
@@ -84,13 +96,17 @@ export function ImageGallery({ attachments, onDelete, readonly = false }: ImageG
                 <button
                   onClick={() => handleDelete(attachment.id)}
                   disabled={deleting === attachment.id}
-                  className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+                  className={`bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50 ${
+                    compact ? "p-1" : "p-2"
+                  }`}
                   title="Delete image"
                 >
                   {deleting === attachment.id ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className={`border-2 border-white border-t-transparent rounded-full animate-spin ${
+                      compact ? "w-3 h-3" : "w-5 h-5"
+                    }`} />
                   ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className={compact ? "w-3 h-3" : "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   )}
@@ -98,10 +114,12 @@ export function ImageGallery({ attachments, onDelete, readonly = false }: ImageG
               )}
             </div>
 
-            {/* File Name */}
-            <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-white text-xs p-2 truncate">
-              {attachment.file_name}
-            </div>
+            {/* File Name - only show in non-compact mode */}
+            {!compact && (
+              <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-white text-xs p-2 truncate">
+                {attachment.file_name}
+              </div>
+            )}
           </div>
         ))}
       </div>

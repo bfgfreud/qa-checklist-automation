@@ -27,6 +27,7 @@ export default function WorkingModePage() {
   const [selectedTester, setSelectedTester] = useState<Tester | null>(null);
 
   // Expanded test cases (for notes and attachments)
+  // Default: all expanded. Format: `${testCaseId}-${testerId}`
   const [expandedTests, setExpandedTests] = useState<Set<string>>(new Set());
 
   // Polling interval (5 seconds)
@@ -192,6 +193,24 @@ export default function WorkingModePage() {
     fetchData();
   }, [projectId, currentTester?.id]);
 
+  // Initialize all testcases as expanded by default
+  useEffect(() => {
+    if (!checklist) return;
+
+    const allTestIds = new Set<string>();
+    checklist.modules.forEach((module) => {
+      module.testCases.forEach((testCase) => {
+        testCase.results.forEach((result) => {
+          // Only expand non-Pass results by default (optimization)
+          // Actually, user wants all expanded by default, so expand all
+          allTestIds.add(`${testCase.testCase.id}-${result.tester.id}`);
+        });
+      });
+    });
+
+    setExpandedTests(allTestIds);
+  }, [checklist?.modules.length]); // Only run when modules count changes (initial load)
+
   // Polling for updates (every 5 seconds)
   // Now safe to poll even with local edits - they'll be preserved!
   useEffect(() => {
@@ -281,7 +300,8 @@ export default function WorkingModePage() {
     resultId: string,
     testerId: string,
     status: TestStatus,
-    notes?: string
+    notes?: string,
+    testCaseId?: string
   ) => {
     const testedAt = new Date().toISOString();
 
@@ -296,6 +316,16 @@ export default function WorkingModePage() {
     // Clear any existing clear timeout
     if (statusClearTimeoutRef.current[resultId]) {
       clearTimeout(statusClearTimeoutRef.current[resultId]);
+    }
+
+    // AUTO-COLLAPSE on Pass: Remove from expanded set
+    if (status === 'Pass' && testCaseId) {
+      const expandKey = `${testCaseId}-${testerId}`;
+      setExpandedTests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(expandKey);
+        return newSet;
+      });
     }
 
     // Optimistically update the UI (preserve exact structure and order)
@@ -564,145 +594,102 @@ export default function WorkingModePage() {
                 key={module.id}
                 className="bg-dark-secondary border border-dark-primary rounded-lg overflow-hidden"
               >
-                {/* Module Header */}
-                <div className="px-6 py-4 bg-dark-elevated border-b border-dark-border">
-                  <h2 className="text-xl font-bold text-white">
+                {/* Module Header - Compact */}
+                <div className="px-4 py-2 bg-dark-elevated border-b border-dark-border">
+                  <h2 className="text-lg font-bold text-white">
                     {module.moduleName}
                     {module.instanceLabel && module.instanceLabel !== module.moduleName && (
-                      <span className="ml-2 text-base text-primary-500">
+                      <span className="ml-2 text-sm text-primary-500">
                         ({module.instanceLabel})
                       </span>
                     )}
                   </h2>
                   {module.moduleDescription && (
-                    <p className="text-sm text-gray-400 mt-1">{module.moduleDescription}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{module.moduleDescription}</p>
                   )}
                 </div>
 
-                {/* Test Cases */}
+                {/* Test Cases - Compact Data Sheet Layout */}
                 <div className="divide-y divide-dark-border">
                   {module.testCases.map((testCase) => {
-                    const isExpanded = expandedTests.has(testCase.testCase.id);
                     const testCaseId = testCase.testCase.id;
 
+                    // Filter results based on view mode
+                    const filteredResults = testCase.results.filter((result) => {
+                      // Filter out Legacy Tester if real testers exist
+                      const hasRealTesters = checklist.assignedTesters && checklist.assignedTesters.some(t => t.email !== 'legacy@system');
+                      const isLegacyTester = result.tester.email === 'legacy@system';
+
+                      if (hasRealTesters && isLegacyTester) {
+                        return false;
+                      }
+
+                      // Apply view mode filter
+                      return viewMode === 'all' || result.tester.id === selectedTester?.id;
+                    });
+
                     return (
-                      <div key={testCaseId} className="p-6">
-                        {/* Test Case Title and Overall Status */}
-                        <div className="flex items-start gap-4 mb-4">
-                          {/* Status Indicator */}
-                          <div className={`w-3 h-3 rounded-full mt-1.5 flex-shrink-0 ${
-                            testCase.overallStatus === 'Pass' ? 'bg-green-500' :
-                            testCase.overallStatus === 'Fail' ? 'bg-red-500' :
-                            testCase.overallStatus === 'Skipped' ? 'bg-yellow-500' :
-                            'bg-gray-500'
-                          }`} />
+                      <div key={testCaseId} className="py-2 px-4">
+                        {filteredResults.map((result) => {
+                          const expandKey = `${testCaseId}-${result.tester.id}`;
+                          const isExpanded = expandedTests.has(expandKey);
+                          const isOwnResult = currentTester && result.tester.id === currentTester.id;
 
-                          {/* Test Case Info */}
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3">
-                              <h3 className="text-lg font-semibold text-white">
-                                {testCase.testCase.title}
-                              </h3>
-                              <span className={`text-xs px-2 py-0.5 rounded ${
-                                testCase.testCase.priority === 'High' ? 'bg-red-500/20 text-red-400' :
-                                testCase.testCase.priority === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                                'bg-gray-500/20 text-gray-400'
-                              }`}>
-                                {testCase.testCase.priority}
-                              </span>
-                            </div>
-                            {testCase.testCase.description && (
-                              <p className="text-sm text-gray-400 mt-1">
-                                {testCase.testCase.description}
-                              </p>
-                            )}
-                          </div>
+                          return (
+                            <div key={result.id} className="py-2">
+                              {/* COLLAPSED ROW: Status circle + Title | Description + Expand Arrow */}
+                              <div className="flex items-center gap-3 hover:bg-dark-elevated/50 px-2 py-1.5 rounded transition-colors">
+                                {/* Status Circle */}
+                                <div
+                                  className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                                    result.status === 'Pass' ? 'bg-green-500' :
+                                    result.status === 'Fail' ? 'bg-red-500' :
+                                    result.status === 'Skipped' ? 'bg-yellow-500' :
+                                    'bg-gray-500'
+                                  }`}
+                                  title={result.status}
+                                />
 
-                          {/* Overall Status Badge */}
-                          <span className={`px-3 py-1 rounded text-sm font-semibold ${
-                            testCase.overallStatus === 'Pass' ? 'bg-green-500/20 text-green-400' :
-                            testCase.overallStatus === 'Fail' ? 'bg-red-500/20 text-red-400' :
-                            testCase.overallStatus === 'Skipped' ? 'bg-yellow-500/20 text-yellow-400' :
-                            'bg-gray-500/20 text-gray-400'
-                          }`}>
-                            {testCase.overallStatus}
-                          </span>
-                        </div>
-
-                        {/* Tester Results */}
-                        <div className="space-y-3 ml-7">
-                          {testCase.results
-                            .filter((result) => {
-                              // Filter out Legacy Tester if real testers exist
-                              const hasRealTesters = checklist.assignedTesters && checklist.assignedTesters.some(t => t.email !== 'legacy@system');
-                              const isLegacyTester = result.tester.email === 'legacy@system';
-
-                              if (hasRealTesters && isLegacyTester) {
-                                return false; // Hide Legacy Tester results
-                              }
-
-                              // Apply view mode filter
-                              return viewMode === 'all' || result.tester.id === selectedTester?.id;
-                            })
-                            .map((result) => (
-                            <div
-                              key={result.id}
-                              className="bg-dark-elevated rounded-lg p-4"
-                            >
-                              {/* Tester Row */}
-                              <div className="flex items-center gap-4">
-                                {/* Tester Avatar */}
-                                <TesterAvatar tester={result.tester} size="sm" />
-                                <span className="text-sm font-medium text-white">
-                                  {result.tester.name}
-                                </span>
-
-                                {/* Status Buttons - Only editable by the assigned tester */}
-                                <div className="flex-1 flex items-center gap-2">
-                                  {(['Pending', 'Pass', 'Fail', 'Skipped'] as TestStatus[]).map((status) => {
-                                    const isOwnResult = currentTester && result.tester.id === currentTester.id;
-
-                                    return (
-                                      <button
-                                        key={status}
-                                        onClick={() => {
-                                          if (isOwnResult) {
-                                            updateTestStatus(result.id, result.tester.id, status, result.notes || undefined);
-                                          }
-                                        }}
-                                        disabled={!isOwnResult}
-                                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                                          result.status === status
-                                            ? status === 'Pass' ? 'bg-green-500 text-white' :
-                                              status === 'Fail' ? 'bg-red-500 text-white' :
-                                              status === 'Skipped' ? 'bg-yellow-500 text-white' :
-                                              'bg-gray-500 text-white'
-                                            : isOwnResult
-                                              ? 'bg-dark-border text-gray-400 hover:bg-dark-primary cursor-pointer'
-                                              : 'bg-dark-border text-gray-600 cursor-not-allowed opacity-50'
-                                        }`}
-                                      >
-                                        {status}
-                                      </button>
-                                    );
-                                  })}
+                                {/* Title + Description (inline, same row) */}
+                                <div className="flex-1 flex items-baseline gap-2 min-w-0">
+                                  <h3 className="text-sm font-semibold text-white flex-shrink-0">
+                                    {testCase.testCase.title}
+                                  </h3>
+                                  {testCase.testCase.description && (
+                                    <>
+                                      <span className="text-gray-600">|</span>
+                                      <p className="text-xs text-gray-400 truncate">
+                                        {testCase.testCase.description}
+                                      </p>
+                                    </>
+                                  )}
                                 </div>
 
-                                {/* Tested At */}
-                                {result.testedAt && (
-                                  <span className="text-xs text-gray-500">
-                                    {new Date(result.testedAt).toLocaleTimeString()}
+                                {/* Priority Badge (optional, small) */}
+                                <span className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 ${
+                                  testCase.testCase.priority === 'High' ? 'bg-red-500/20 text-red-400' :
+                                  testCase.testCase.priority === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                  'bg-gray-500/20 text-gray-400'
+                                }`}>
+                                  {testCase.testCase.priority}
+                                </span>
+
+                                {/* Tester name (for multi-tester view) */}
+                                {viewMode === 'all' && (
+                                  <span className="text-xs text-gray-500 flex-shrink-0">
+                                    {result.tester.name}
                                   </span>
                                 )}
 
-                                {/* Expand Button */}
+                                {/* Expand/Collapse Arrow */}
                                 <button
-                                  onClick={() => toggleTestExpansion(testCaseId + result.tester.id)}
-                                  className="text-gray-400 hover:text-gray-200 p-1"
+                                  onClick={() => toggleTestExpansion(expandKey)}
+                                  className="text-gray-400 hover:text-gray-200 p-1 flex-shrink-0"
+                                  aria-label={isExpanded ? "Collapse" : "Expand"}
                                 >
                                   <svg
-                                    className={`w-5 h-5 transition-transform ${
-                                      expandedTests.has(testCaseId + result.tester.id) ? 'rotate-180' : ''
+                                    className={`w-4 h-4 transition-transform ${
+                                      isExpanded ? 'rotate-180' : ''
                                     }`}
                                     fill="none"
                                     stroke="currentColor"
@@ -713,92 +700,131 @@ export default function WorkingModePage() {
                                 </button>
                               </div>
 
-                              {/* Expanded: Notes and Attachments */}
-                              {expandedTests.has(testCaseId + result.tester.id) && (() => {
-                                const isOwnResult = currentTester && result.tester.id === currentTester.id;
-
-                                return (
-                                  <div className="mt-4 space-y-4">
-                                    {/* Notes */}
-                                    <div>
-                                      <label className="block text-sm font-medium text-gray-400 mb-2">
-                                        Notes {!isOwnResult && <span className="text-xs text-gray-500">(Read-only)</span>}
-                                      </label>
-                                      <textarea
-                                        value={result.notes || ''}
-                                        onChange={(e) => {
-                                          if (!isOwnResult) return;
-
-                                          const newNotes = e.target.value;
-                                          // Update local state immediately
-                                          if (checklist) {
-                                            const updatedChecklist = { ...checklist };
-                                            updatedChecklist.modules.forEach((m) => {
-                                              m.testCases.forEach((tc) => {
-                                                const r = tc.results.find((res) => res.id === result.id);
-                                                if (r) {
-                                                  r.notes = newNotes;
-                                                }
-                                              });
-                                            });
-                                            setChecklist(updatedChecklist);
-                                          }
-                                          // Debounced save
-                                          updateTestNotes(result.id, result.tester.id, newNotes, result.status);
-                                        }}
-                                        readOnly={!isOwnResult}
-                                        placeholder={isOwnResult ? "Add notes about this test..." : ""}
-                                        className={`w-full bg-dark-bg border border-dark-border text-white rounded px-3 py-2 text-sm resize-none ${
-                                          isOwnResult
-                                            ? 'focus:outline-none focus:ring-2 focus:ring-primary-500'
-                                            : 'opacity-60 cursor-not-allowed'
-                                        }`}
-                                        rows={3}
-                                      />
-                                      {isOwnResult && (
-                                        <p className="text-xs text-gray-500 mt-1">
-                                          Auto-saves 1.5s after you stop typing
-                                        </p>
-                                      )}
-                                    </div>
-
-                                    {/* Attachments */}
-                                    <div>
-                                      <label className="block text-sm font-medium text-gray-400 mb-2">
-                                        Attachments ({result.attachments.length})
-                                      </label>
-
-                                      {/* Image Gallery */}
-                                      {result.attachments.length > 0 && (
-                                        <div className="mb-4">
-                                          <ImageGallery
-                                            attachments={result.attachments}
-                                            onDelete={isOwnResult ? (attachmentId) => {
-                                              // Refresh checklist after delete
-                                              fetchData(false);
-                                            } : undefined}
-                                            readonly={!isOwnResult}
-                                          />
-                                        </div>
-                                      )}
-
-                                      {/* Image Uploader - Only show for own results */}
-                                      {isOwnResult && (
-                                        <ImageUploader
-                                          testResultId={result.id}
-                                          onUploadComplete={(url) => {
-                                            // Refresh checklist after upload
-                                            fetchData(false);
+                              {/* EXPANDED SECTION: 3-column working area */}
+                              {isExpanded && (
+                                <div className="mt-2 ml-6 grid grid-cols-12 gap-4 bg-dark-elevated/30 p-3 rounded">
+                                  {/* Column 1: Status Buttons (25% = 3 cols) */}
+                                  <div className="col-span-3">
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Status</label>
+                                    <div className="flex flex-col gap-1.5">
+                                      {(['Pending', 'Pass', 'Fail', 'Skipped'] as TestStatus[]).map((status) => (
+                                        <button
+                                          key={status}
+                                          onClick={() => {
+                                            if (isOwnResult) {
+                                              updateTestStatus(result.id, result.tester.id, status, result.notes || undefined, testCaseId);
+                                            }
                                           }}
-                                        />
-                                      )}
+                                          disabled={!isOwnResult}
+                                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                            result.status === status
+                                              ? status === 'Pass' ? 'bg-green-500 text-white' :
+                                                status === 'Fail' ? 'bg-red-500 text-white' :
+                                                status === 'Skipped' ? 'bg-yellow-500 text-white' :
+                                                'bg-gray-500 text-white'
+                                              : isOwnResult
+                                                ? 'bg-dark-border text-gray-400 hover:bg-dark-primary cursor-pointer'
+                                                : 'bg-dark-border text-gray-600 cursor-not-allowed opacity-50'
+                                          }`}
+                                        >
+                                          {status}
+                                        </button>
+                                      ))}
                                     </div>
+                                    {result.testedAt && (
+                                      <p className="text-xs text-gray-500 mt-2">
+                                        {new Date(result.testedAt).toLocaleTimeString()}
+                                      </p>
+                                    )}
                                   </div>
-                                );
-                              })()}
+
+                                  {/* Column 2: Notes (40% = 5 cols) */}
+                                  <div className="col-span-5">
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                                      Notes {!isOwnResult && <span className="text-xs text-gray-500">(Read-only)</span>}
+                                    </label>
+                                    <textarea
+                                      value={result.notes || ''}
+                                      onChange={(e) => {
+                                        if (!isOwnResult) return;
+
+                                        const newNotes = e.target.value;
+                                        // Update local state immediately
+                                        if (checklist) {
+                                          const updatedChecklist = { ...checklist };
+                                          updatedChecklist.modules.forEach((m) => {
+                                            m.testCases.forEach((tc) => {
+                                              const r = tc.results.find((res) => res.id === result.id);
+                                              if (r) {
+                                                r.notes = newNotes;
+                                              }
+                                            });
+                                          });
+                                          setChecklist(updatedChecklist);
+                                        }
+                                        // Debounced save
+                                        updateTestNotes(result.id, result.tester.id, newNotes, result.status);
+                                      }}
+                                      onFocus={(e) => {
+                                        // Expand on focus
+                                        e.target.rows = 8;
+                                      }}
+                                      onBlur={(e) => {
+                                        // Collapse on blur
+                                        e.target.rows = 3;
+                                      }}
+                                      readOnly={!isOwnResult}
+                                      placeholder={isOwnResult ? "Add notes..." : ""}
+                                      className={`w-full bg-dark-bg border border-dark-border text-white rounded px-2 py-1.5 text-xs resize-none transition-all ${
+                                        isOwnResult
+                                          ? 'focus:outline-none focus:ring-1 focus:ring-primary-500'
+                                          : 'opacity-60 cursor-not-allowed'
+                                      }`}
+                                      rows={3}
+                                    />
+                                    {isOwnResult && (
+                                      <p className="text-xs text-gray-500 mt-1">
+                                        Auto-saves 1.5s after you stop typing
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Column 3: Attachments (35% = 4 cols) */}
+                                  <div className="col-span-4">
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                                      Attachments ({result.attachments.length})
+                                    </label>
+
+                                    {/* Compact thumbnail grid */}
+                                    {result.attachments.length > 0 && (
+                                      <div className="mb-2">
+                                        <ImageGallery
+                                          attachments={result.attachments}
+                                          onDelete={isOwnResult ? (attachmentId) => {
+                                            fetchData(false);
+                                          } : undefined}
+                                          readonly={!isOwnResult}
+                                          compact={true}
+                                        />
+                                      </div>
+                                    )}
+
+                                    {/* Upload buttons - only show for own results */}
+                                    {isOwnResult && (
+                                      <ImageUploader
+                                        testResultId={result.id}
+                                        onUploadComplete={(url) => {
+                                          fetchData(false);
+                                        }}
+                                        compact={true}
+                                      />
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })}
                       </div>
                     );
                   })}
