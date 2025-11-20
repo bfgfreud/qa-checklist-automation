@@ -929,6 +929,10 @@ export default function ProjectEditPage() {
               console.log(`[SAVE DEBUG] Saved testcase: "${testcase.testcaseTitle}"`);
             }
           }
+
+          // Set initial testcase order for the newly added custom module
+          const tempModule = { ...mod, id: newModuleId };
+          await reorderModuleTestcases(tempModule as DraftModule, undefined);
         } else {
           // LIBRARY MODULE: Create with library reference (HYBRID model copies data automatically)
           const response = await fetch('/api/checklists/modules', {
@@ -945,12 +949,24 @@ export default function ProjectEditPage() {
             const errorResult = await response.json();
             throw new Error(errorResult.error || `Failed to add module: ${mod.moduleName}`);
           }
+
+          // Get the created module's real ID from response
+          const result = await response.json();
+          const newModuleId = result.data?.id;
+
+          if (newModuleId) {
+            // Set initial testcase order for the newly added library module
+            const tempModule = { ...mod, id: newModuleId };
+            await reorderModuleTestcases(tempModule as DraftModule, undefined);
+          }
         }
       }
 
       // Save custom testcases added to existing modules
       let customTestcasesSaved = 0;
+      const modulesNeedingReorder: DraftModule[] = [];
       for (const { module, newTestcases } of modulesWithNewCustomTestcases) {
+        let savedCount = 0;
         for (const testcase of newTestcases) {
           try {
             const payload = {
@@ -973,12 +989,24 @@ export default function ProjectEditPage() {
               // Continue with other testcases even if one fails
             } else {
               customTestcasesSaved++;
+              savedCount++;
             }
           } catch (err) {
             console.error(`Error adding custom testcase "${testcase.testcaseTitle}":`, err);
             // Continue with other testcases even if one fails
           }
         }
+
+        // If we saved any custom testcases, reorder this module to place them correctly
+        if (savedCount > 0) {
+          modulesNeedingReorder.push(module);
+        }
+      }
+
+      // Reorder modules that had custom testcases added
+      for (const module of modulesNeedingReorder) {
+        const originalModule = originalModules.find(om => om.id === module.id);
+        await reorderModuleTestcases(module, originalModule);
       }
 
       // Reorder modules if needed (compare orderIndex changes)
@@ -1011,42 +1039,31 @@ export default function ProjectEditPage() {
       }
 
       // Reorder testcases if needed (within each module)
-      let testcasesReordered = 0;
-      for (const draftModule of draftModules) {
-        if (draftModule._isDraft || draftModule._isDeleted) continue; // Skip new/deleted modules
+      // Helper function to reorder testcases for a module
+      const reorderModuleTestcases = async (draftModule: DraftModule, originalModule?: DraftModule) => {
+        // Get unique testcase identifiers from draft (first occurrence)
+        type TestcaseIdentifier = { testcaseId: string | null; testcaseTitle: string };
+        const draftTestcaseOrder: TestcaseIdentifier[] = [];
+        const seen = new Set<string>();
 
-        const originalModule = originalModules.find(om => om.id === draftModule.id);
-        if (!originalModule) continue;
-
-        // Get unique testcase order from draft (first occurrence of each testcaseId)
-        const draftTestcaseOrder: string[] = [];
         draftModule.testResults.forEach((tr) => {
-          if (tr.testcaseId && !draftTestcaseOrder.includes(tr.testcaseId)) {
-            draftTestcaseOrder.push(tr.testcaseId);
+          // Create unique key: testcaseId (if exists) or testcaseTitle (for custom)
+          const uniqueKey = tr.testcaseId || tr.testcaseTitle;
+          if (uniqueKey && !seen.has(uniqueKey)) {
+            seen.add(uniqueKey);
+            draftTestcaseOrder.push({
+              testcaseId: tr.testcaseId || null,
+              testcaseTitle: tr.testcaseTitle
+            });
           }
         });
 
-        // Get unique testcase order from original
-        const originalTestcaseOrder: string[] = [];
-        originalModule.testResults.forEach((tr) => {
-          if (tr.testcaseId && !originalTestcaseOrder.includes(tr.testcaseId)) {
-            originalTestcaseOrder.push(tr.testcaseId);
-          }
-        });
-
-        // Check if order changed by comparing arrays
-        const orderChanged = draftTestcaseOrder.length !== originalTestcaseOrder.length ||
-          draftTestcaseOrder.some((tcId, idx) => tcId !== originalTestcaseOrder[idx]);
-
-        if (orderChanged) {
-          console.log(`[SAVE DEBUG] Testcase order changed in module "${draftModule.moduleName}"`);
-          console.log('[SAVE DEBUG] Original order:', originalTestcaseOrder);
-          console.log('[SAVE DEBUG] New order:', draftTestcaseOrder);
-
-          // Build payload with correct display_order based on unique testcase position
+        // If no original module (draft module just created), always reorder to set initial order
+        if (!originalModule) {
           const reorderPayload = {
-            testcases: draftTestcaseOrder.map((testcaseId, displayOrder) => ({
-              testcaseId,
+            testcases: draftTestcaseOrder.map((tc, displayOrder) => ({
+              testcaseId: tc.testcaseId,
+              testcaseTitle: tc.testcaseId ? undefined : tc.testcaseTitle, // Only send title for custom
               displayOrder
             }))
           };
@@ -1060,13 +1077,79 @@ export default function ProjectEditPage() {
             }
           );
 
-          if (!reorderRes.ok) {
-            console.error(`Failed to reorder testcases in module "${draftModule.moduleName}"`);
+          if (reorderRes.ok) {
+            console.log(`[SAVE DEBUG] Set initial testcase order for new module "${draftModule.moduleName}"`);
+            return true;
           } else {
-            testcasesReordered++;
-            console.log('[SAVE DEBUG] Successfully reordered testcases');
+            console.error(`Failed to set initial testcase order for "${draftModule.moduleName}"`);
+            return false;
           }
         }
+
+        // Compare with original module to detect changes
+        const originalTestcaseOrder: TestcaseIdentifier[] = [];
+        const originalSeen = new Set<string>();
+
+        originalModule.testResults.forEach((tr) => {
+          const uniqueKey = tr.testcaseId || tr.testcaseTitle;
+          if (uniqueKey && !originalSeen.has(uniqueKey)) {
+            originalSeen.add(uniqueKey);
+            originalTestcaseOrder.push({
+              testcaseId: tr.testcaseId || null,
+              testcaseTitle: tr.testcaseTitle
+            });
+          }
+        });
+
+        // Check if order changed
+        const orderChanged = draftTestcaseOrder.length !== originalTestcaseOrder.length ||
+          draftTestcaseOrder.some((tc, idx) => {
+            const orig = originalTestcaseOrder[idx];
+            if (!orig) return true;
+            return (tc.testcaseId || tc.testcaseTitle) !== (orig.testcaseId || orig.testcaseTitle);
+          });
+
+        if (!orderChanged) return false;
+
+        console.log(`[SAVE DEBUG] Testcase order changed in module "${draftModule.moduleName}"`);
+
+        // Build reorder payload
+        const reorderPayload = {
+          testcases: draftTestcaseOrder.map((tc, displayOrder) => ({
+            testcaseId: tc.testcaseId,
+            testcaseTitle: tc.testcaseId ? undefined : tc.testcaseTitle, // Only send title for custom
+            displayOrder
+          }))
+        };
+
+        const reorderRes = await fetch(
+          `/api/projects/${projectId}/checklist/modules/${draftModule.id}/testcases/reorder`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(reorderPayload),
+          }
+        );
+
+        if (reorderRes.ok) {
+          console.log('[SAVE DEBUG] Successfully reordered testcases');
+          return true;
+        } else {
+          console.error(`Failed to reorder testcases in module "${draftModule.moduleName}"`);
+          return false;
+        }
+      };
+
+      let testcasesReordered = 0;
+      for (const draftModule of draftModules) {
+        if (draftModule._isDeleted) continue; // Skip deleted modules
+
+        // For draft modules (newly added), reorder will happen after creation
+        if (draftModule._isDraft) continue;
+
+        const originalModule = originalModules.find(om => om.id === draftModule.id);
+        const reordered = await reorderModuleTestcases(draftModule, originalModule);
+        if (reordered) testcasesReordered++;
       }
 
       // Refresh checklist from server to get real IDs and data

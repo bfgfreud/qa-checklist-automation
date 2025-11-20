@@ -141,10 +141,11 @@ export const checklistService = {
           tested_by,
           tested_at,
           created_at,
-          updated_at
+          updated_at,
+          display_order
         `)
         .in('project_checklist_module_id', (checklistModules || []).map(m => m.id))
-        .order('created_at', { ascending: true })
+        .order('display_order', { ascending: true })
 
       if (resultsError) {
         console.error('Error fetching test results:', resultsError)
@@ -647,10 +648,11 @@ export const checklistService = {
   /**
    * Reorder testcases within a checklist module
    * CRITICAL: Updates display_order for ALL testers' test results (multi-tester sync)
+   * Supports both library testcases (testcaseId) and custom testcases (testcaseTitle)
    */
   async reorderChecklistTestcases(
     moduleId: string,
-    input: { testcases: Array<{ testcaseId: string; displayOrder: number }> }
+    input: { testcases: Array<{ testcaseId?: string | null; testcaseTitle?: string | null; displayOrder: number }> }
   ): Promise<{
     success: boolean
     error?: string
@@ -669,13 +671,23 @@ export const checklistService = {
 
       // Update display_order for each testcase
       // CRITICAL: Update ALL tester results for each testcase (not just one tester)
-      const updates = input.testcases.map(tc =>
-        supabase
+      const updates = input.testcases.map(tc => {
+        let query = supabase
           .from('checklist_test_results')
           .update({ display_order: tc.displayOrder })
           .eq('project_checklist_module_id', moduleId)
-          .eq('testcase_id', tc.testcaseId)
-      )
+
+        // For library testcases: match by testcase_id
+        if (tc.testcaseId) {
+          query = query.eq('testcase_id', tc.testcaseId)
+        }
+        // For custom testcases: match by testcase_title + is_custom flag
+        else if (tc.testcaseTitle) {
+          query = query.eq('testcase_title', tc.testcaseTitle).eq('is_custom', true)
+        }
+
+        return query
+      })
 
       const results = await Promise.all(updates)
 

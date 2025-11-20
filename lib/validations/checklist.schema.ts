@@ -94,14 +94,19 @@ export const reorderChecklistModulesSchema = z.object({
 /**
  * Schema for reordering testcases within a checklist module
  * CRITICAL: Updates display_order for ALL testers' test results (multi-tester sync)
+ * Supports both library testcases (testcaseId) and custom testcases (testcaseTitle)
  */
 export const reorderChecklistTestcasesSchema = z.object({
   testcases: z.array(z.object({
-    testcaseId: z.string().uuid('Invalid testcase ID'),
+    testcaseId: z.string().uuid('Invalid testcase ID').optional().nullable(),
+    testcaseTitle: z.string().optional().nullable(),
     displayOrder: z.number()
       .int('Display order must be an integer')
       .min(0, 'Display order must be non-negative')
-  })).min(1, 'At least one testcase is required for reordering')
+  }).refine(
+    (data) => data.testcaseId != null || data.testcaseTitle != null,
+    { message: 'Either testcaseId or testcaseTitle must be provided' }
+  )).min(1, 'At least one testcase is required for reordering')
 })
 
 // ============================================
