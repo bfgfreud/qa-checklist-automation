@@ -35,22 +35,6 @@ export default function WorkingModePage() {
   // Expanded read-only notes/attachments for other testers - Format: `${resultId}-notes` or `${resultId}-attachments`
   const [expandedReadOnly, setExpandedReadOnly] = useState<Set<string>>(new Set());
 
-  // Helper function to generate consistent color for tester (same as overview page)
-  const getTesterColor = (testerId: string) => {
-    const colors = [
-      'bg-blue-500/20 text-blue-400 border-blue-500/30',
-      'bg-green-500/20 text-green-400 border-green-500/30',
-      'bg-purple-500/20 text-purple-400 border-purple-500/30',
-      'bg-orange-500/20 text-orange-400 border-orange-500/30',
-      'bg-pink-500/20 text-pink-400 border-pink-500/30',
-      'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-      'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    ];
-    // Generate consistent color based on tester ID
-    const hash = testerId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[hash % colors.length];
-  };
-
   // Collapsed modules - stores module IDs that are collapsed
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
 
@@ -1347,8 +1331,15 @@ export default function WorkingModePage() {
 
                               return (
                                 <div key={result.id} className="flex items-center gap-2 px-2 py-0.5 text-xs hover:bg-dark-elevated/30 rounded">
-                                  {/* Tester Name - Colored Badge */}
-                                  <span className={`px-1.5 py-0.5 rounded border font-medium text-xs ${getTesterColor(result.tester.id)}`}>
+                                  {/* Tester Name - Colored Badge (same color as avatar) */}
+                                  <span
+                                    className="px-1.5 py-0.5 rounded border font-medium text-xs text-white"
+                                    style={{
+                                      backgroundColor: `${result.tester.color}33`, // 20% opacity
+                                      borderColor: `${result.tester.color}66`, // 40% opacity
+                                      color: result.tester.color
+                                    }}
+                                  >
                                     {result.tester.name}
                                   </span>
 
