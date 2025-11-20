@@ -32,6 +32,8 @@ export default function WorkingModePage() {
 
   // Expanded attachment areas - Format: `${resultId}`
   const [expandedAttachments, setExpandedAttachments] = useState<Set<string>>(new Set());
+  // Expanded read-only notes/attachments for other testers - Format: `${resultId}-notes` or `${resultId}-attachments`
+  const [expandedReadOnly, setExpandedReadOnly] = useState<Set<string>>(new Set());
 
   // Collapsed modules - stores module IDs that are collapsed
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
@@ -1014,50 +1016,99 @@ export default function WorkingModePage() {
 
                                   {/* Column 2: Notes (40% = 5 cols) */}
                                   <div className="col-span-5">
-                                    <div className="mb-1.5">
-                                      <label className="text-xs font-medium text-gray-400">
-                                        Notes {!isOwnResult && <span className="text-xs text-gray-500">(Read-only)</span>}
-                                      </label>
-                                    </div>
-                                    <textarea
-                                      value={result.notes || ''}
-                                      onChange={(e) => {
-                                        if (!isOwnResult) return;
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                                      Notes {!isOwnResult && <span className="text-xs text-gray-500">(Read-only)</span>}
+                                    </label>
 
-                                        const newNotes = e.target.value;
-                                        // Update local state immediately
-                                        if (checklist) {
-                                          const updatedChecklist = { ...checklist };
-                                          updatedChecklist.modules.forEach((m) => {
-                                            m.testCases.forEach((tc) => {
-                                              const r = tc.results.find((res) => res.id === result.id);
-                                              if (r) {
-                                                r.notes = newNotes;
-                                              }
+                                    {/* Own Result - Editable Textarea */}
+                                    {isOwnResult && (
+                                      <textarea
+                                        value={result.notes || ''}
+                                        onChange={(e) => {
+                                          const newNotes = e.target.value;
+                                          // Update local state immediately
+                                          if (checklist) {
+                                            const updatedChecklist = { ...checklist };
+                                            updatedChecklist.modules.forEach((m) => {
+                                              m.testCases.forEach((tc) => {
+                                                const r = tc.results.find((res) => res.id === result.id);
+                                                if (r) {
+                                                  r.notes = newNotes;
+                                                }
+                                              });
                                             });
-                                          });
-                                          setChecklist(updatedChecklist);
-                                        }
-                                        // Debounced save
-                                        updateTestNotes(result.id, result.tester.id, newNotes, result.status);
-                                      }}
-                                      onFocus={(e) => {
-                                        // Expand on focus
-                                        e.target.rows = 6;
-                                      }}
-                                      onBlur={(e) => {
-                                        // Collapse on blur
-                                        e.target.rows = 1;
-                                      }}
-                                      readOnly={!isOwnResult}
-                                      placeholder={isOwnResult ? "Add notes..." : ""}
-                                      className={`w-full bg-dark-bg border border-dark-border text-white rounded px-2 py-1 text-xs resize-none transition-all ${
-                                        isOwnResult
-                                          ? 'focus:outline-none focus:ring-1 focus:ring-primary-500'
-                                          : 'opacity-60 cursor-not-allowed'
-                                      }`}
-                                      rows={1}
-                                    />
+                                            setChecklist(updatedChecklist);
+                                          }
+                                          // Debounced save
+                                          updateTestNotes(result.id, result.tester.id, newNotes, result.status);
+                                        }}
+                                        onFocus={(e) => {
+                                          // Expand on focus
+                                          e.target.rows = 6;
+                                        }}
+                                        onBlur={(e) => {
+                                          // Collapse on blur
+                                          e.target.rows = 1;
+                                        }}
+                                        placeholder="Add notes..."
+                                        className="w-full bg-dark-bg border border-dark-border text-white rounded px-2 py-1 text-xs leading-tight resize-none transition-all focus:outline-none focus:ring-1 focus:ring-primary-500"
+                                        rows={1}
+                                      />
+                                    )}
+
+                                    {/* Other Tester - Compact Expandable View */}
+                                    {!isOwnResult && (
+                                      <div>
+                                        {!expandedReadOnly.has(`${result.id}-notes`) ? (
+                                          /* Collapsed - 1 line */
+                                          <div
+                                            onClick={() => {
+                                              if (result.notes && result.notes.trim()) {
+                                                setExpandedReadOnly(prev => {
+                                                  const newSet = new Set(prev);
+                                                  newSet.add(`${result.id}-notes`);
+                                                  return newSet;
+                                                });
+                                              }
+                                            }}
+                                            className={`border border-dark-border rounded px-2 py-1 text-xs leading-tight transition-colors ${
+                                              result.notes && result.notes.trim()
+                                                ? 'cursor-pointer hover:border-blue-500/50 text-gray-400'
+                                                : 'text-gray-600'
+                                            }`}
+                                            title={result.notes && result.notes.trim() ? "Click to view notes" : "No notes"}
+                                          >
+                                            {result.notes && result.notes.trim() ? (
+                                              <span className="truncate block">📝 {result.notes}</span>
+                                            ) : (
+                                              <span>No notes</span>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          /* Expanded - Full view */
+                                          <div className="border border-blue-500 rounded p-1 bg-blue-500/5">
+                                            <div className="flex items-center justify-between mb-1">
+                                              <span className="text-xs font-medium text-gray-400">Notes</span>
+                                              <button
+                                                onClick={() => {
+                                                  setExpandedReadOnly(prev => {
+                                                    const newSet = new Set(prev);
+                                                    newSet.delete(`${result.id}-notes`);
+                                                    return newSet;
+                                                  });
+                                                }}
+                                                className="text-xs text-gray-500 hover:text-white"
+                                              >
+                                                Collapse ▲
+                                              </button>
+                                            </div>
+                                            <div className="bg-dark-bg border border-dark-border rounded px-2 py-1.5 text-xs text-gray-300 whitespace-pre-wrap">
+                                              {result.notes}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
 
                                   {/* Column 3: Attachments (35% = 4 cols) */}
@@ -1149,7 +1200,7 @@ export default function WorkingModePage() {
                                               e.currentTarget.style.borderColor = '';
                                               e.currentTarget.style.backgroundColor = '';
                                             }}
-                                            className="border border-dashed border-dark-border rounded px-2 py-1 cursor-pointer transition-colors hover:border-primary-500/50 text-xs text-gray-500"
+                                            className="border border-dashed border-dark-border rounded px-2 py-1 cursor-pointer transition-colors hover:border-primary-500/50 text-xs leading-tight text-gray-500"
                                             title="Click to expand or press Ctrl+V to paste"
                                             spellCheck="false"
                                           >
@@ -1196,10 +1247,60 @@ export default function WorkingModePage() {
                                       </div>
                                     )}
 
-                                    {/* Read-only view for non-owners */}
-                                    {!isOwnResult && result.attachments.length > 0 && (
-                                      <div className="text-xs text-gray-500 px-2 py-1 border border-dark-border rounded">
-                                        📎 {result.attachments.length} image{result.attachments.length > 1 ? 's' : ''}
+                                    {/* Read-only view for non-owners - Compact Expandable */}
+                                    {!isOwnResult && (
+                                      <div>
+                                        {!expandedReadOnly.has(`${result.id}-attachments`) ? (
+                                          /* Collapsed - 1 line */
+                                          <div
+                                            onClick={() => {
+                                              if (result.attachments.length > 0) {
+                                                setExpandedReadOnly(prev => {
+                                                  const newSet = new Set(prev);
+                                                  newSet.add(`${result.id}-attachments`);
+                                                  return newSet;
+                                                });
+                                              }
+                                            }}
+                                            className={`border border-dark-border rounded px-2 py-1 text-xs leading-tight transition-colors ${
+                                              result.attachments.length > 0
+                                                ? 'cursor-pointer hover:border-purple-500/50 text-gray-400'
+                                                : 'text-gray-600'
+                                            }`}
+                                            title={result.attachments.length > 0 ? "Click to view images" : "No images"}
+                                          >
+                                            {result.attachments.length > 0 ? (
+                                              <span>📎 {result.attachments.length} image{result.attachments.length > 1 ? 's' : ''} • Click to view</span>
+                                            ) : (
+                                              <span>No images</span>
+                                            )}
+                                          </div>
+                                        ) : (
+                                          /* Expanded - Show thumbnails */
+                                          <div className="border border-purple-500 rounded p-1 bg-purple-500/5">
+                                            <div className="flex items-center justify-between mb-1">
+                                              <span className="text-xs font-medium text-gray-400">Images ({result.attachments.length})</span>
+                                              <button
+                                                onClick={() => {
+                                                  setExpandedReadOnly(prev => {
+                                                    const newSet = new Set(prev);
+                                                    newSet.delete(`${result.id}-attachments`);
+                                                    return newSet;
+                                                  });
+                                                }}
+                                                className="text-xs text-gray-500 hover:text-white"
+                                              >
+                                                Collapse ▲
+                                              </button>
+                                            </div>
+                                            <ImageGallery
+                                              attachments={result.attachments}
+                                              onDelete={() => {}}
+                                              readonly={true}
+                                              compact={true}
+                                            />
+                                          </div>
+                                        )}
                                       </div>
                                     )}
                                   </div>
