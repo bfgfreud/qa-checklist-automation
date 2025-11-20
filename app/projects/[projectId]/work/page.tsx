@@ -30,6 +30,9 @@ export default function WorkingModePage() {
   // Default: all expanded. Format: `${testCaseId}-${testerId}`
   const [expandedTests, setExpandedTests] = useState<Set<string>>(new Set());
 
+  // Expanded attachment areas - Format: `${resultId}`
+  const [expandedAttachments, setExpandedAttachments] = useState<Set<string>>(new Set());
+
   // Collapsed modules - stores module IDs that are collapsed
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
 
@@ -1075,75 +1078,107 @@ export default function WorkingModePage() {
                                       )}
                                     </div>
 
-                                    {/* Paste Area with dashed border */}
+                                    {/* Compact Attachment Cell (Google Sheets style) */}
                                     {isOwnResult && (
-                                      <div
-                                        contentEditable={result.attachments.length > 0}
-                                        suppressContentEditableWarning
-                                        onPaste={async (e) => {
-                                          e.preventDefault();
-                                          const items = e.clipboardData?.items;
-                                          if (!items) return;
+                                      <div>
+                                        {/* Collapsed View - Single Line */}
+                                        {!expandedAttachments.has(result.id) && (
+                                          <div
+                                            contentEditable={true}
+                                            suppressContentEditableWarning
+                                            onPaste={async (e) => {
+                                              e.preventDefault();
+                                              const items = e.clipboardData?.items;
+                                              if (!items) return;
 
-                                          const imageFiles: File[] = [];
-                                          for (let i = 0; i < items.length; i++) {
-                                            const item = items[i];
-                                            if (item.type.startsWith('image/')) {
-                                              const file = item.getAsFile();
-                                              if (file) imageFiles.push(file);
-                                            }
-                                          }
-
-                                          if (imageFiles.length > 0) {
-                                            for (const file of imageFiles) {
-                                              const formData = new FormData();
-                                              formData.append('file', file);
-
-                                              try {
-                                                const response = await fetch(`/api/test-results/${result.id}/attachments`, {
-                                                  method: 'POST',
-                                                  body: formData,
-                                                });
-
-                                                if (response.ok) {
-                                                  fetchData(false);
+                                              const imageFiles: File[] = [];
+                                              for (let i = 0; i < items.length; i++) {
+                                                const item = items[i];
+                                                if (item.type.startsWith('image/')) {
+                                                  const file = item.getAsFile();
+                                                  if (file) imageFiles.push(file);
                                                 }
-                                              } catch (error) {
-                                                console.error('Upload error:', error);
                                               }
-                                            }
-                                          }
-                                        }}
-                                        onFocus={(e) => {
-                                          e.currentTarget.style.borderColor = '#3b82f6';
-                                          e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.05)';
-                                        }}
-                                        onBlur={(e) => {
-                                          e.currentTarget.style.borderColor = '';
-                                          e.currentTarget.style.backgroundColor = '';
-                                        }}
-                                        className="border-2 border-dashed border-dark-border rounded p-2 cursor-text transition-colors hover:border-primary-500/50 min-h-[60px]"
-                                        title="Click here then press Ctrl+V to paste images"
-                                        spellCheck="false"
-                                      >
-                                        {/* Compact thumbnail grid */}
-                                        {result.attachments.length > 0 ? (
-                                          <div onClick={(e) => e.stopPropagation()}>
+
+                                              if (imageFiles.length > 0) {
+                                                for (const file of imageFiles) {
+                                                  const formData = new FormData();
+                                                  formData.append('file', file);
+
+                                                  try {
+                                                    const response = await fetch(`/api/test-results/${result.id}/attachments`, {
+                                                      method: 'POST',
+                                                      body: formData,
+                                                    });
+
+                                                    if (response.ok) {
+                                                      fetchData(false);
+                                                    }
+                                                  } catch (error) {
+                                                    console.error('Upload error:', error);
+                                                  }
+                                                }
+                                              }
+                                            }}
+                                            onClick={() => {
+                                              if (result.attachments.length > 0) {
+                                                setExpandedAttachments(prev => {
+                                                  const newSet = new Set(prev);
+                                                  newSet.add(result.id);
+                                                  return newSet;
+                                                });
+                                              }
+                                            }}
+                                            onFocus={(e) => {
+                                              e.currentTarget.style.borderColor = '#3b82f6';
+                                              e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.05)';
+                                            }}
+                                            onBlur={(e) => {
+                                              e.currentTarget.style.borderColor = '';
+                                              e.currentTarget.style.backgroundColor = '';
+                                            }}
+                                            className="border-2 border-dashed border-dark-border rounded px-2 py-1 cursor-pointer transition-colors hover:border-primary-500/50 text-xs text-gray-500"
+                                            title="Click to expand or press Ctrl+V to paste"
+                                            spellCheck="false"
+                                          >
+                                            {result.attachments.length > 0 ? (
+                                              <span className="pointer-events-none select-none">
+                                                📎 {result.attachments.length} image{result.attachments.length > 1 ? 's' : ''} • Click to view
+                                              </span>
+                                            ) : (
+                                              <span className="pointer-events-none select-none">
+                                                Click here and press Ctrl+V to paste
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
+
+                                        {/* Expanded View - Show Thumbnails */}
+                                        {expandedAttachments.has(result.id) && (
+                                          <div className="border-2 border-primary-500 rounded p-2 bg-primary-500/5">
+                                            <div className="flex items-center justify-between mb-2">
+                                              <span className="text-xs font-medium text-gray-400">Image Attachments</span>
+                                              <button
+                                                onClick={() => {
+                                                  setExpandedAttachments(prev => {
+                                                    const newSet = new Set(prev);
+                                                    newSet.delete(result.id);
+                                                    return newSet;
+                                                  });
+                                                }}
+                                                className="text-xs text-gray-500 hover:text-white"
+                                              >
+                                                Collapse ▲
+                                              </button>
+                                            </div>
                                             <ImageGallery
                                               attachments={result.attachments}
-                                              onDelete={isOwnResult ? (attachmentId) => {
+                                              onDelete={(attachmentId) => {
                                                 fetchData(false);
-                                              } : undefined}
-                                              readonly={!isOwnResult}
+                                              }}
+                                              readonly={false}
                                               compact={true}
                                             />
-                                          </div>
-                                        ) : (
-                                          <div
-                                            className="text-xs text-gray-500 text-center py-3 pointer-events-none select-none"
-                                            aria-hidden="true"
-                                          >
-                                            Click here and press Ctrl+V to paste images
                                           </div>
                                         )}
                                       </div>
@@ -1151,12 +1186,8 @@ export default function WorkingModePage() {
 
                                     {/* Read-only view for non-owners */}
                                     {!isOwnResult && result.attachments.length > 0 && (
-                                      <div>
-                                        <ImageGallery
-                                          attachments={result.attachments}
-                                          readonly={true}
-                                          compact={true}
-                                        />
+                                      <div className="text-xs text-gray-500 px-2 py-1 border border-dark-border rounded">
+                                        📎 {result.attachments.length} image{result.attachments.length > 1 ? 's' : ''}
                                       </div>
                                     )}
                                   </div>
