@@ -832,8 +832,13 @@ export default function ProjectEditPage() {
           const uniqueKey = tr.testcaseId || tr.testcaseTitle;
           if (uniqueKey && !seen.has(uniqueKey)) {
             seen.add(uniqueKey);
+            // Check if testcaseId is a real UUID (not a draft/temp ID)
+            const isRealTestcaseId = tr.testcaseId &&
+              !tr.testcaseId.startsWith('draft-') &&
+              !tr.testcaseId.startsWith('custom-tc-');
+
             draftTestcaseOrder.push({
-              testcaseId: tr.testcaseId || null,
+              testcaseId: isRealTestcaseId ? tr.testcaseId : null,
               testcaseTitle: tr.testcaseTitle
             });
           }
@@ -875,8 +880,13 @@ export default function ProjectEditPage() {
           const uniqueKey = tr.testcaseId || tr.testcaseTitle;
           if (uniqueKey && !originalSeen.has(uniqueKey)) {
             originalSeen.add(uniqueKey);
+            // Check if testcaseId is a real UUID (not a draft/temp ID)
+            const isRealTestcaseId = tr.testcaseId &&
+              !tr.testcaseId.startsWith('draft-') &&
+              !tr.testcaseId.startsWith('custom-tc-');
+
             originalTestcaseOrder.push({
-              testcaseId: tr.testcaseId || null,
+              testcaseId: isRealTestcaseId ? tr.testcaseId : null,
               testcaseTitle: tr.testcaseTitle
             });
           }
@@ -978,7 +988,11 @@ export default function ProjectEditPage() {
 
       // Add new modules (both library and custom)
       let customTestcasesSaved = 0;
+      const createdModules: Array<{ id: string; draftIndex: number }> = [];
+
       for (const mod of modulesToAdd) {
+        // Find this module's position in the draft list
+        const draftIndex = draftModules.findIndex(dm => dm === mod);
         if (mod._isCustom) {
           // CUSTOM MODULE: Create with no library reference
           const response = await fetch('/api/checklists/modules', {
@@ -1005,6 +1019,9 @@ export default function ProjectEditPage() {
           if (!newModuleId) {
             throw new Error(`Failed to get module ID for: ${mod.moduleName}`);
           }
+
+          // Track created module for reordering later
+          createdModules.push({ id: newModuleId, draftIndex });
 
           // Add ALL testcases to the custom module
           // Custom modules don't have library testcases, so all testResults are custom
@@ -1058,6 +1075,8 @@ export default function ProjectEditPage() {
           const newModuleId = result.data?.id;
 
           if (newModuleId) {
+            // Track created module for reordering later
+            createdModules.push({ id: newModuleId, draftIndex });
             // Save custom testcases added to this library module during draft mode
             const customTestcases = (mod.testResults || []).filter(
               (tr) => tr.testcaseId?.startsWith('custom-tc-') || tr.testcaseId?.startsWith('draft-custom-tc-')
@@ -1092,6 +1111,42 @@ export default function ProjectEditPage() {
             // Set initial testcase order for the newly added library module
             const tempModule = { ...mod, id: newModuleId };
             await reorderModuleTestcases(tempModule as DraftModule, undefined);
+          }
+        }
+      }
+
+      // Reorder newly created modules if needed
+      if (createdModules.length > 0) {
+        // Build the complete module order including both existing and new modules
+        const allModuleIds: Array<{ id: string; orderIndex: number }> = [];
+
+        draftModules.forEach((dm, idx) => {
+          if (dm._isDeleted) return; // Skip deleted
+
+          if (dm._isDraft) {
+            // Find the created module for this draft
+            const created = createdModules.find(cm => cm.draftIndex === idx);
+            if (created) {
+              allModuleIds.push({ id: created.id, orderIndex: idx });
+            }
+          } else {
+            // Existing module
+            allModuleIds.push({ id: dm.id, orderIndex: idx });
+          }
+        });
+
+        if (allModuleIds.length > 0) {
+          console.log('[SAVE DEBUG] Setting initial module order for', createdModules.length, 'new modules');
+          const reorderRes = await fetch(`/api/projects/${projectId}/checklist/reorder`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ modules: allModuleIds }),
+          });
+
+          if (!reorderRes.ok) {
+            console.error('Failed to set initial module order');
+          } else {
+            console.log('[SAVE DEBUG] Successfully set initial module order');
           }
         }
       }
