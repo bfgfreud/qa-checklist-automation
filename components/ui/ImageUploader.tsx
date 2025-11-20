@@ -86,53 +86,17 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
     }
   };
 
-  // Handle click on paste button - auto-trigger paste
-  const handlePasteButtonClick = async () => {
-    // Try modern Clipboard API first (works in most modern browsers with user gesture)
-    try {
-      if (navigator.clipboard && navigator.clipboard.read) {
-        const clipboardItems = await navigator.clipboard.read();
-        const imageFiles: File[] = [];
-
-        for (const clipboardItem of clipboardItems) {
-          for (const type of clipboardItem.types) {
-            if (type.startsWith('image/')) {
-              const blob = await clipboardItem.getType(type);
-              const file = new File([blob], `pasted-image-${Date.now()}.png`, { type });
-              imageFiles.push(file);
-            }
-          }
-        }
-
-        if (imageFiles.length > 0) {
-          const dt = new DataTransfer();
-          for (const file of imageFiles) {
-            dt.items.add(file);
-          }
-          await handleFileSelect(dt.files);
-          return; // Success!
-        }
-      }
-    } catch (err) {
-      console.log('Clipboard API failed, trying fallback:', err);
-    }
-
-    // Fallback: Focus paste area and try execCommand
+  // Handle click on paste button - focus and ready for Ctrl+V
+  const handlePasteButtonClick = () => {
     setShowPastePrompt(true);
     if (pasteAreaRef.current) {
       pasteAreaRef.current.focus();
-
-      // Try execCommand paste (might work in some browsers)
-      setTimeout(() => {
-        const success = document.execCommand('paste');
-        if (!success) {
-          // If execCommand fails, keep the prompt visible for manual paste
-          console.log('Auto-paste failed, waiting for manual Ctrl+V');
-        } else {
-          setShowPastePrompt(false);
-        }
-      }, 50);
     }
+
+    // Auto-hide prompt after 10 seconds if not used
+    setTimeout(() => {
+      setShowPastePrompt(false);
+    }, 10000);
   };
 
   // Handle paste event on the paste area
@@ -181,8 +145,8 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
 
       {/* Paste area - shows when paste button is clicked */}
       {showPastePrompt && (
-        <div className="mb-2 p-2 bg-primary-500/10 border border-primary-500 rounded text-xs text-primary-400 animate-pulse">
-          ✨ Paste area ready! Press <kbd className="px-1 py-0.5 bg-dark-elevated rounded font-mono">Ctrl+V</kbd> to paste your image
+        <div className="mb-2 p-2 bg-primary-500/20 border-2 border-primary-500 rounded text-sm text-white font-semibold animate-pulse shadow-lg">
+          📋 Ready! Press <kbd className="px-2 py-1 bg-primary-500 text-white rounded font-mono mx-1">Ctrl+V</kbd> to paste
         </div>
       )}
       <div
