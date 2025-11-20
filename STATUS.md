@@ -325,20 +325,57 @@
   - **Fixed status flickering** - Improved polling strategy with local edits preservation
   - **Fixed notes disappearing** - Implemented local-first merge strategy
   - **Fixed new project workflow** - Auto-join dialog for projects without testers
+  - **Fixed test results creation** - Auto-assign creates test result rows for existing modules
+  - **Fixed duplicate testers** - TesterContext excludes Legacy Tester from name matching
+  - **Fixed cross-tester editing security** - Permission checks prevent editing other testers' work
+  - **✅ Fixed notes mid-typing deletion** - Activity-based timeout (10s inactivity check)
+  - **✅ Fixed test case jumping** - Immutable updates + scroll preservation
+  - **✅ Auto-assign in Edit Mode** - Testers assigned before modules added
 
 ---
 
 ## 🎯 Next Steps
 
-### Phase 5: Integration & Polish (Starting Now)
+### ✅ Latest Stability Fixes (Just Deployed!)
+
+**What was fixed**:
+1. ✅ **Notes disappearing mid-typing** - Implemented activity-based timeout with 10-second inactivity check. Local edits are preserved during polling and only cleared after user stops typing for 10+ seconds.
+2. ✅ **Test cases jumping after status change** - Changed to immutable update patterns using shallow copying with `.map()` to preserve exact array order. Added scroll position preservation during background polls.
+3. ✅ **Security - Cross-tester editing** - All input fields check `isOwnResult` before allowing edits. Other testers' results are read-only.
+4. ✅ **Test results creation** - `assignTesterToProject` now creates test result rows for all existing modules when a new tester joins.
+5. ✅ **Auto-assignment timing** - Added auto-assign to Edit Mode so it happens BEFORE modules are added.
+
+**Technical Implementation**:
+- `localEditsRef` tracks `lastActivity: Date.now()` on every keystroke
+- Separate timeout refs for save (`notesTimeoutRef`) and clear (`notesClearTimeoutRef`)
+- 1.5s debounce for auto-save, 10s timeout for clearing (only if inactive)
+- Scroll position saved before fetch, restored with `requestAnimationFrame` after render
+- Immutable updates: `{ ...checklist, modules: checklist.modules.map(...) }`
+
+**Files Modified**:
+- `lib/services/testerService.ts:323-384` - Test result creation on assignment
+- `contexts/TesterContext.tsx:43-58` - Exclude Legacy Tester from matching
+- `app/projects/[projectId]/edit/page.tsx` - Auto-assign current tester
+- `app/projects/[projectId]/work/page.tsx:40-774` - All stability fixes
+
+**Deployed to Production**: https://qa-checklist-automation.vercel.app/
+
+**Testing Required**: User needs to refresh browser and verify:
+- ✅ Notes don't disappear while typing long sentences
+- ✅ Test cases stay in place after status changes
+- ✅ Testers can only edit their own results
+- ✅ New projects have proper multi-tester structure
+
+---
+
+### Phase 5: Integration & Polish (Next)
 
 1. **End-to-End Testing**
-   - Test complete workflow: Create project → Add modules → Execute tests
-   - Test multi-tester collaboration (open 2+ browser windows)
-   - Test image upload and deletion
-   - Test notes auto-save
-   - Verify polling and real-time updates work correctly
+   - ✅ Test multi-tester collaboration (2+ testers)
+   - ⏳ Verify all stability fixes work in production
    - Test with large checklists (100+ testcases)
+   - Test image upload and deletion at scale
+   - Monitor request volume vs. free tier limits
 
 2. **Error Handling & Edge Cases**
    - Handle network errors gracefully
@@ -347,39 +384,19 @@
    - Empty state improvements
    - Better loading states
 
-3. **Performance Testing**
-   - Test with multiple simultaneous users
-   - Monitor request volume vs. free tier limits
-   - Optimize image loading (lazy load, thumbnails)
-   - Consider virtualization for long test lists
-
-4. **Polish & UX Improvements**
+3. **Polish & UX Improvements**
    - Mobile responsiveness (currently desktop-focused)
    - Keyboard shortcuts (Ctrl+S to save, etc.)
    - Better success/error notifications
    - Improved transitions and animations
    - Accessibility improvements
 
-5. **Future Enhancements (Optional)**
+4. **Future Enhancements (Optional)**
    - Drag-drop reordering of modules and testcases
    - Export checklist to PDF/Excel
    - Dashboard with analytics
    - Email notifications
    - UI overhaul for better visual design
-
-**CRITICAL NEXT ACTION**:
-**Refresh your browser** to load the new auto-join flow code, then test:
-1. Create a new project
-2. Add 1 module to the checklist
-3. Click "Start Working"
-4. Verify the "Start Testing?" dialog appears
-5. Click "Assign Me & Start"
-6. Test that status updates, notes, and images work WITHOUT:
-   - Status flickering
-   - Notes disappearing while typing
-   - Test cases jumping around
-
-This should fix all three critical bugs by ensuring proper multi-tester structure.
 
 ---
 
