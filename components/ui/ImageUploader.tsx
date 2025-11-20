@@ -8,9 +8,10 @@ interface ImageUploaderProps {
   onUploadComplete: (url: string) => void;
   multiple?: boolean;
   compact?: boolean;
+  hidePaste?: boolean;
 }
 
-export function ImageUploader({ testResultId, onUploadComplete, multiple = true, compact = false }: ImageUploaderProps) {
+export function ImageUploader({ testResultId, onUploadComplete, multiple = true, compact = false, hidePaste = false }: ImageUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [showPastePrompt, setShowPastePrompt] = useState(false);
@@ -160,38 +161,47 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
       />
 
       {compact ? (
-        /* Compact Mode: Two tiny buttons side by side */
-        <div className="flex gap-1">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="flex-1 px-2 py-0.5 bg-dark-border hover:bg-dark-primary text-gray-400 hover:text-gray-200 rounded text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-          >
-            {uploading ? (
-              <>
-                <div className="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
-                <span className="text-[10px]">Uploading...</span>
-              </>
-            ) : (
-              <>
+        /* Compact Mode */
+        <div>
+          <div className={hidePaste ? "flex" : "flex gap-1"}>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className={`px-2 py-0.5 bg-dark-border hover:bg-dark-primary text-gray-400 hover:text-gray-200 rounded text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center ${hidePaste ? 'w-auto' : 'flex-1'}`}
+            >
+              {uploading ? (
+                <>
+                  <div className="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
+                  <span className="text-[10px]">Uploading...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-2.5 h-2.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  <span className="text-[10px]">Upload</span>
+                </>
+              )}
+            </button>
+            {!hidePaste && (
+              <button
+                onClick={handlePasteButtonClick}
+                disabled={uploading}
+                title="Click then press Ctrl+V to paste image"
+                className="flex-1 px-2 py-0.5 bg-dark-border hover:bg-dark-primary text-gray-400 hover:text-gray-200 rounded text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              >
                 <svg className="w-2.5 h-2.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
-                <span className="text-[10px]">Upload</span>
-              </>
+                <span className="text-[10px]">Paste</span>
+              </button>
             )}
-          </button>
-          <button
-            onClick={handlePasteButtonClick}
-            disabled={uploading}
-            title="Click then press Ctrl+V to paste image"
-            className="flex-1 px-2 py-0.5 bg-dark-border hover:bg-dark-primary text-gray-400 hover:text-gray-200 rounded text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-          >
-            <svg className="w-2.5 h-2.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <span className="text-[10px]">Paste</span>
-          </button>
+          </div>
+          {hidePaste && (
+            <div className="text-[9px] text-gray-500 mt-0.5">
+              Or click the dashed area above and press Ctrl+V
+            </div>
+          )}
         </div>
       ) : (
         /* Full Mode: Drag & Drop Zone */

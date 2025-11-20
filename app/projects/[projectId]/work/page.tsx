@@ -938,9 +938,7 @@ export default function WorkingModePage() {
                                       <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
                                       </svg>
-                                      {result.attachments.length > 1 && (
-                                        <span className="text-xs">+{result.attachments.length - 1}</span>
-                                      )}
+                                      <span className="text-xs">({result.attachments.length})</span>
                                     </div>
                                   )}
                                 </div>
@@ -1063,21 +1061,88 @@ export default function WorkingModePage() {
                                       Attachments ({result.attachments.length})
                                     </label>
 
-                                    {/* Compact thumbnail grid */}
-                                    {result.attachments.length > 0 && (
+                                    {/* Paste Area with dashed border */}
+                                    {isOwnResult && (
+                                      <div
+                                        contentEditable
+                                        suppressContentEditableWarning
+                                        onPaste={async (e) => {
+                                          e.preventDefault();
+                                          const items = e.clipboardData?.items;
+                                          if (!items) return;
+
+                                          const imageFiles: File[] = [];
+                                          for (let i = 0; i < items.length; i++) {
+                                            const item = items[i];
+                                            if (item.type.startsWith('image/')) {
+                                              const file = item.getAsFile();
+                                              if (file) imageFiles.push(file);
+                                            }
+                                          }
+
+                                          if (imageFiles.length > 0) {
+                                            for (const file of imageFiles) {
+                                              const formData = new FormData();
+                                              formData.append('file', file);
+
+                                              try {
+                                                const response = await fetch(`/api/test-results/${result.id}/attachments`, {
+                                                  method: 'POST',
+                                                  body: formData,
+                                                });
+
+                                                if (response.ok) {
+                                                  fetchData(false);
+                                                }
+                                              } catch (error) {
+                                                console.error('Upload error:', error);
+                                              }
+                                            }
+                                          }
+                                        }}
+                                        onFocus={(e) => {
+                                          e.currentTarget.style.borderColor = '#3b82f6';
+                                          e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.05)';
+                                        }}
+                                        onBlur={(e) => {
+                                          e.currentTarget.style.borderColor = '';
+                                          e.currentTarget.style.backgroundColor = '';
+                                        }}
+                                        className="border-2 border-dashed border-dark-border rounded p-2 mb-2 cursor-text transition-colors hover:border-primary-500/50 min-h-[80px]"
+                                        title="Click here then press Ctrl+V to paste images"
+                                      >
+                                        {/* Compact thumbnail grid */}
+                                        {result.attachments.length > 0 ? (
+                                          <div onClick={(e) => e.stopPropagation()}>
+                                            <ImageGallery
+                                              attachments={result.attachments}
+                                              onDelete={isOwnResult ? (attachmentId) => {
+                                                fetchData(false);
+                                              } : undefined}
+                                              readonly={!isOwnResult}
+                                              compact={true}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <div className="text-xs text-gray-500 text-center py-4">
+                                            Click here and press Ctrl+V to paste images
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* Read-only view for non-owners */}
+                                    {!isOwnResult && result.attachments.length > 0 && (
                                       <div className="mb-2">
                                         <ImageGallery
                                           attachments={result.attachments}
-                                          onDelete={isOwnResult ? (attachmentId) => {
-                                            fetchData(false);
-                                          } : undefined}
-                                          readonly={!isOwnResult}
+                                          readonly={true}
                                           compact={true}
                                         />
                                       </div>
                                     )}
 
-                                    {/* Upload buttons - only show for own results */}
+                                    {/* Upload button - only show for own results */}
                                     {isOwnResult && (
                                       <ImageUploader
                                         testResultId={result.id}
@@ -1085,6 +1150,7 @@ export default function WorkingModePage() {
                                           fetchData(false);
                                         }}
                                         compact={true}
+                                        hidePaste={true}
                                       />
                                     )}
                                   </div>
