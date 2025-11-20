@@ -1192,9 +1192,9 @@ export default function ProjectEditPage() {
       }
 
       // Reorder modules that had custom testcases added
-      for (const module of modulesNeedingReorder) {
-        const originalModule = originalModules.find(om => om.id === module.id);
-        await reorderModuleTestcases(module, originalModule);
+      for (const mod of modulesNeedingReorder) {
+        const originalModule = originalModules.find(om => om.id === mod.id);
+        await reorderModuleTestcases(mod, originalModule);
       }
 
       // Reorder modules if needed (compare orderIndex changes)

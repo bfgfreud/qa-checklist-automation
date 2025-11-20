@@ -490,7 +490,7 @@ export default function WorkingModePage() {
           </svg>
           <h2 className="text-2xl font-bold text-white mb-2">Set Your Name First</h2>
           <p className="text-gray-400 mb-6">
-            Please click "Set Your Name" in the top-right corner to identify yourself before working on tests.
+            Please click &quot;Set Your Name&quot; in the top-right corner to identify yourself before working on tests.
           </p>
           <Button onClick={() => router.back()}>Go Back</Button>
         </div>

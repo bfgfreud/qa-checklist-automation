@@ -340,12 +340,12 @@ export const testerService = {
 
         const testResultInserts = []
 
-        for (const module of existingModules) {
+        for (const mod of existingModules) {
           // Get unique testcases from existing results (to avoid duplicates)
           const uniqueTestcases = new Map()
 
-          if (module.checklist_test_results && Array.isArray(module.checklist_test_results)) {
-            for (const result of module.checklist_test_results) {
+          if (mod.checklist_test_results && Array.isArray(mod.checklist_test_results)) {
+            for (const result of mod.checklist_test_results) {
               const key = result.testcase_id || result.testcase_title
               if (!uniqueTestcases.has(key)) {
                 uniqueTestcases.set(key, result)
@@ -356,7 +356,7 @@ export const testerService = {
           // Create test result for each unique testcase
           for (const [, testcase] of uniqueTestcases) {
             testResultInserts.push({
-              project_checklist_module_id: module.id,
+              project_checklist_module_id: mod.id,
               tester_id: testerId,
               testcase_id: testcase.testcase_id || null,
               testcase_title: testcase.testcase_title,
