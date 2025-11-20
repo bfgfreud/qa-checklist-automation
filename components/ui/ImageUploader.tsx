@@ -13,6 +13,7 @@ interface ImageUploaderProps {
 export function ImageUploader({ testResultId, onUploadComplete, multiple = true, compact = false }: ImageUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [showPastePrompt, setShowPastePrompt] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pasteAreaRef = useRef<HTMLDivElement>(null);
@@ -85,54 +86,24 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
     }
   };
 
-  // Handle click on paste button - directly read from clipboard
-  const handlePasteButtonClick = async () => {
-    try {
-      // Try modern Clipboard API first
-      if (navigator.clipboard && navigator.clipboard.read) {
-        const clipboardItems = await navigator.clipboard.read();
-        const imageFiles: File[] = [];
-
-        for (const clipboardItem of clipboardItems) {
-          for (const type of clipboardItem.types) {
-            if (type.startsWith('image/')) {
-              const blob = await clipboardItem.getType(type);
-              const file = new File([blob], `pasted-image-${Date.now()}.png`, { type });
-              imageFiles.push(file);
-            }
-          }
-        }
-
-        if (imageFiles.length > 0) {
-          const dt = new DataTransfer();
-          for (const file of imageFiles) {
-            dt.items.add(file);
-          }
-          await handleFileSelect(dt.files);
-        } else {
-          alert('No images found in clipboard. Please copy an image first (Ctrl+C or right-click > Copy Image).');
-        }
-      } else {
-        // Fallback: use contentEditable paste area
-        if (pasteAreaRef.current) {
-          pasteAreaRef.current.focus();
-          // Wait a bit for focus, then execute paste
-          setTimeout(() => {
-            document.execCommand('paste');
-          }, 100);
-        }
-      }
-    } catch (err) {
-      console.error('Clipboard paste error:', err);
-      alert('Unable to access clipboard. Please grant clipboard permissions or use the Upload button instead.');
+  // Handle click on paste button - show prompt and focus paste area
+  const handlePasteButtonClick = () => {
+    setShowPastePrompt(true);
+    if (pasteAreaRef.current) {
+      pasteAreaRef.current.focus();
     }
   };
 
-  // Handle paste event on the hidden paste area (fallback)
+  // Handle paste event on the paste area
   const handlePasteEvent = async (e: React.ClipboardEvent<HTMLDivElement>) => {
     e.preventDefault();
+    setShowPastePrompt(false); // Hide prompt after paste
+
     const items = e.clipboardData?.items;
-    if (!items) return;
+    if (!items) {
+      alert('No clipboard data available. Please try copying the image again.');
+      return;
+    }
 
     const imageFiles: File[] = [];
     for (let i = 0; i < items.length; i++) {
@@ -151,6 +122,8 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
         dt.items.add(file);
       }
       await handleFileSelect(dt.files);
+    } else {
+      alert('No images found in clipboard. Please copy an image (not a file path) using Ctrl+C or right-click > Copy Image.');
     }
   };
 
@@ -165,11 +138,17 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
         className="hidden"
       />
 
-      {/* Hidden paste area for capturing paste events */}
+      {/* Paste area - shows when paste button is clicked */}
+      {showPastePrompt && (
+        <div className="mb-2 p-2 bg-primary-500/10 border border-primary-500 rounded text-xs text-primary-400 animate-pulse">
+          ✨ Paste area ready! Press <kbd className="px-1 py-0.5 bg-dark-elevated rounded font-mono">Ctrl+V</kbd> to paste your image
+        </div>
+      )}
       <div
         ref={pasteAreaRef}
         contentEditable
         onPaste={handlePasteEvent}
+        onBlur={() => setShowPastePrompt(false)}
         className="sr-only"
         style={{ position: 'absolute', left: '-9999px' }}
         tabIndex={-1}
