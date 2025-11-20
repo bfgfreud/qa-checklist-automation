@@ -974,7 +974,7 @@ export default function WorkingModePage() {
 
                               {/* EXPANDED SECTION: 3-column working area */}
                               {isExpanded && (
-                                <div className="mt-2 ml-6 grid grid-cols-12 gap-4 bg-dark-elevated/30 p-3 rounded">
+                                <div className="mt-2 ml-6 grid grid-cols-12 gap-4 bg-dark-elevated/30 p-3 rounded items-start">
                                   {/* Column 1: Status Buttons (25% = 3 cols) */}
                                   <div className="col-span-3">
                                     <div className="flex items-center justify-between mb-1.5">
@@ -1086,6 +1086,16 @@ export default function WorkingModePage() {
                                           <div
                                             contentEditable={true}
                                             suppressContentEditableWarning
+                                            onKeyDown={(e) => {
+                                              // Prevent all typing - only allow paste
+                                              if (e.key !== 'v' || !e.ctrlKey) {
+                                                e.preventDefault();
+                                              }
+                                            }}
+                                            onInput={(e) => {
+                                              // Clear any text that gets typed
+                                              e.currentTarget.textContent = '';
+                                            }}
                                             onPaste={async (e) => {
                                               e.preventDefault();
                                               const items = e.clipboardData?.items;
@@ -1155,8 +1165,8 @@ export default function WorkingModePage() {
 
                                         {/* Expanded View - Show Thumbnails */}
                                         {expandedAttachments.has(result.id) && (
-                                          <div className="border-2 border-primary-500 rounded p-2 bg-primary-500/5">
-                                            <div className="flex items-center justify-between mb-2">
+                                          <div className="border-2 border-primary-500 rounded p-1.5 bg-primary-500/5">
+                                            <div className="flex items-center justify-between mb-1">
                                               <span className="text-xs font-medium text-gray-400">Image Attachments</span>
                                               <button
                                                 onClick={() => {
