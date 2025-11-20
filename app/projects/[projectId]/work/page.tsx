@@ -1057,14 +1057,28 @@ export default function WorkingModePage() {
 
                                   {/* Column 3: Attachments (35% = 4 cols) */}
                                   <div className="col-span-4">
-                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                                      Attachments ({result.attachments.length})
-                                    </label>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                      <label className="text-xs font-medium text-gray-400">
+                                        Attachments ({result.attachments.length})
+                                      </label>
+                                      {/* Upload button - inline with label */}
+                                      {isOwnResult && (
+                                        <ImageUploader
+                                          testResultId={result.id}
+                                          onUploadComplete={(url) => {
+                                            fetchData(false);
+                                          }}
+                                          compact={true}
+                                          hidePaste={true}
+                                          hideHelperText={true}
+                                        />
+                                      )}
+                                    </div>
 
                                     {/* Paste Area with dashed border */}
                                     {isOwnResult && (
                                       <div
-                                        contentEditable
+                                        contentEditable={result.attachments.length > 0}
                                         suppressContentEditableWarning
                                         onPaste={async (e) => {
                                           e.preventDefault();
@@ -1108,8 +1122,9 @@ export default function WorkingModePage() {
                                           e.currentTarget.style.borderColor = '';
                                           e.currentTarget.style.backgroundColor = '';
                                         }}
-                                        className="border-2 border-dashed border-dark-border rounded p-2 mb-2 cursor-text transition-colors hover:border-primary-500/50 min-h-[80px]"
+                                        className="border-2 border-dashed border-dark-border rounded p-2 cursor-text transition-colors hover:border-primary-500/50 min-h-[60px]"
                                         title="Click here then press Ctrl+V to paste images"
+                                        spellCheck="false"
                                       >
                                         {/* Compact thumbnail grid */}
                                         {result.attachments.length > 0 ? (
@@ -1124,7 +1139,10 @@ export default function WorkingModePage() {
                                             />
                                           </div>
                                         ) : (
-                                          <div className="text-xs text-gray-500 text-center py-4">
+                                          <div
+                                            className="text-xs text-gray-500 text-center py-3 pointer-events-none select-none"
+                                            aria-hidden="true"
+                                          >
                                             Click here and press Ctrl+V to paste images
                                           </div>
                                         )}
@@ -1133,25 +1151,13 @@ export default function WorkingModePage() {
 
                                     {/* Read-only view for non-owners */}
                                     {!isOwnResult && result.attachments.length > 0 && (
-                                      <div className="mb-2">
+                                      <div>
                                         <ImageGallery
                                           attachments={result.attachments}
                                           readonly={true}
                                           compact={true}
                                         />
                                       </div>
-                                    )}
-
-                                    {/* Upload button - only show for own results */}
-                                    {isOwnResult && (
-                                      <ImageUploader
-                                        testResultId={result.id}
-                                        onUploadComplete={(url) => {
-                                          fetchData(false);
-                                        }}
-                                        compact={true}
-                                        hidePaste={true}
-                                      />
                                     )}
                                   </div>
                                 </div>

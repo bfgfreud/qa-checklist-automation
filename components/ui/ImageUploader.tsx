@@ -9,9 +9,10 @@ interface ImageUploaderProps {
   multiple?: boolean;
   compact?: boolean;
   hidePaste?: boolean;
+  hideHelperText?: boolean;
 }
 
-export function ImageUploader({ testResultId, onUploadComplete, multiple = true, compact = false, hidePaste = false }: ImageUploaderProps) {
+export function ImageUploader({ testResultId, onUploadComplete, multiple = true, compact = false, hidePaste = false, hideHelperText = false }: ImageUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [showPastePrompt, setShowPastePrompt] = useState(false);
@@ -197,7 +198,7 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
               </button>
             )}
           </div>
-          {hidePaste && (
+          {hidePaste && !hideHelperText && (
             <div className="text-[9px] text-gray-500 mt-0.5">
               Or click the dashed area above and press Ctrl+V
             </div>

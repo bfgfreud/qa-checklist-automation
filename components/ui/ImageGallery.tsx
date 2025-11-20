@@ -58,7 +58,7 @@ export function ImageGallery({ attachments, onDelete, readonly = false, compact 
     <>
       {/* Thumbnail Grid */}
       <div className={compact
-        ? "flex flex-wrap gap-1.5"
+        ? "flex flex-wrap gap-1"
         : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
       }>
         {visibleAttachments.map((attachment) => (
@@ -66,7 +66,7 @@ export function ImageGallery({ attachments, onDelete, readonly = false, compact 
             key={attachment.id}
             className={`relative group bg-dark-bg rounded overflow-hidden border border-dark-border hover:border-primary-500 transition-colors ${
               compact
-                ? "w-16 h-16"
+                ? "w-12 h-12"
                 : "aspect-square"
             }`}
           >
@@ -86,11 +86,11 @@ export function ImageGallery({ attachments, onDelete, readonly = false, compact 
               <button
                 onClick={() => setSelectedImage(attachment)}
                 className={`bg-primary-500 text-white rounded hover:bg-primary-600 transition-colors ${
-                  compact ? "p-1" : "p-2"
+                  compact ? "p-0.5" : "p-2"
                 }`}
                 title="View full size"
               >
-                <svg className={compact ? "w-3 h-3" : "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={compact ? "w-2.5 h-2.5" : "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
@@ -102,16 +102,16 @@ export function ImageGallery({ attachments, onDelete, readonly = false, compact 
                   onClick={() => handleDelete(attachment.id)}
                   disabled={deleting === attachment.id}
                   className={`bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50 ${
-                    compact ? "p-1" : "p-2"
+                    compact ? "p-0.5" : "p-2"
                   }`}
                   title="Delete image"
                 >
                   {deleting === attachment.id ? (
                     <div className={`border-2 border-white border-t-transparent rounded-full animate-spin ${
-                      compact ? "w-3 h-3" : "w-5 h-5"
+                      compact ? "w-2.5 h-2.5" : "w-5 h-5"
                     }`} />
                   ) : (
-                    <svg className={compact ? "w-3 h-3" : "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className={compact ? "w-2.5 h-2.5" : "w-5 h-5"} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   )}
@@ -131,7 +131,7 @@ export function ImageGallery({ attachments, onDelete, readonly = false, compact 
         {/* "+N more" indicator in compact mode */}
         {compact && hiddenCount > 0 && (
           <div
-            className="w-16 h-16 bg-dark-bg rounded overflow-hidden border border-dark-border flex items-center justify-center cursor-pointer hover:border-primary-500 transition-colors"
+            className="w-12 h-12 bg-dark-bg rounded overflow-hidden border border-dark-border flex items-center justify-center cursor-pointer hover:border-primary-500 transition-colors"
             onClick={() => {
               // Open lightbox with the first hidden image
               if (attachments[maxVisibleInCompact]) {
@@ -139,7 +139,7 @@ export function ImageGallery({ attachments, onDelete, readonly = false, compact 
               }
             }}
           >
-            <span className="text-xs font-semibold text-gray-400">+{hiddenCount}</span>
+            <span className="text-[10px] font-semibold text-gray-400">+{hiddenCount}</span>
           </div>
         )}
       </div>
