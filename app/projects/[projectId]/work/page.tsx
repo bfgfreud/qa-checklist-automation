@@ -30,6 +30,12 @@ export default function WorkingModePage() {
   // Default: all expanded. Format: `${testCaseId}-${testerId}`
   const [expandedTests, setExpandedTests] = useState<Set<string>>(new Set());
 
+  // Collapsed modules - stores module IDs that are collapsed
+  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
+
+  // Status filter for testcases
+  const [statusFilter, setStatusFilter] = useState<TestStatus | 'All'>('All');
+
   // Polling interval (5 seconds)
   const [isPolling, setIsPolling] = useState(true);
 
@@ -232,6 +238,51 @@ export default function WorkingModePage() {
       } else {
         newSet.add(testCaseId);
       }
+      return newSet;
+    });
+  };
+
+  // Toggle module collapse
+  const toggleModuleCollapse = (moduleId: string) => {
+    setCollapsedModules((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(moduleId)) {
+        newSet.delete(moduleId);
+      } else {
+        newSet.add(moduleId);
+      }
+      return newSet;
+    });
+  };
+
+  // Quick actions
+  const collapseAllModules = () => {
+    if (!checklist) return;
+    const allModuleIds = new Set(checklist.modules.map(m => m.id));
+    setCollapsedModules(allModuleIds);
+  };
+
+  const expandAllModules = () => {
+    setCollapsedModules(new Set());
+  };
+
+  const collapsePassedTests = () => {
+    if (!checklist) return;
+    const passedTests = new Set<string>();
+    checklist.modules.forEach(module => {
+      module.testCases.forEach(testCase => {
+        testCase.results.forEach(result => {
+          if (result.status === 'Pass') {
+            const expandKey = `${testCase.testCase.id}-${result.tester.id}`;
+            passedTests.add(expandKey);
+          }
+        });
+      });
+    });
+    // Remove passed tests from expanded set (collapse them)
+    setExpandedTests(prev => {
+      const newSet = new Set(prev);
+      passedTests.forEach(key => newSet.delete(key));
       return newSet;
     });
   };
@@ -588,30 +639,158 @@ export default function WorkingModePage() {
             </Button>
           </div>
         ) : (
-          <div className="space-y-6">
-            {checklist.modules.map((module) => (
+          <>
+            {/* Quick Action Toolbar */}
+            <div className="bg-dark-secondary border border-dark-primary rounded-lg p-3 mb-4">
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Module Actions */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 font-medium">Modules:</span>
+                  <button
+                    onClick={collapseAllModules}
+                    className="px-2 py-1 bg-dark-elevated hover:bg-dark-border text-gray-300 hover:text-white rounded text-xs transition-colors"
+                  >
+                    Collapse All
+                  </button>
+                  <button
+                    onClick={expandAllModules}
+                    className="px-2 py-1 bg-dark-elevated hover:bg-dark-border text-gray-300 hover:text-white rounded text-xs transition-colors"
+                  >
+                    Expand All
+                  </button>
+                </div>
+
+                <span className="text-gray-600">|</span>
+
+                {/* Testcase Actions */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 font-medium">Testcases:</span>
+                  <button
+                    onClick={collapsePassedTests}
+                    className="px-2 py-1 bg-dark-elevated hover:bg-dark-border text-gray-300 hover:text-white rounded text-xs transition-colors"
+                  >
+                    Collapse Pass
+                  </button>
+                </div>
+
+                <span className="text-gray-600">|</span>
+
+                {/* Status Filter */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 font-medium">Filter:</span>
+                  {(['All', 'Pending', 'Pass', 'Fail', 'Skipped'] as const).map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => setStatusFilter(status)}
+                      className={`px-2 py-1 rounded text-xs transition-colors ${
+                        statusFilter === status
+                          ? 'bg-primary-500 text-white'
+                          : 'bg-dark-elevated hover:bg-dark-border text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Modules List */}
+            <div className="space-y-6">
+            {checklist.modules.map((module) => {
+              // Calculate module-level stats
+              const moduleStats = {
+                total: 0,
+                pending: 0,
+                passed: 0,
+                failed: 0,
+                skipped: 0,
+              };
+
+              module.testCases.forEach((testCase) => {
+                moduleStats.total++;
+                switch (testCase.overallStatus) {
+                  case 'Pending':
+                    moduleStats.pending++;
+                    break;
+                  case 'Pass':
+                    moduleStats.passed++;
+                    break;
+                  case 'Fail':
+                    moduleStats.failed++;
+                    break;
+                  case 'Skipped':
+                    moduleStats.skipped++;
+                    break;
+                }
+              });
+
+              const moduleProgress = moduleStats.total > 0
+                ? Math.round(((moduleStats.passed + moduleStats.failed + moduleStats.skipped) / moduleStats.total) * 100)
+                : 0;
+
+              return (
               <div
                 key={module.id}
                 className="bg-dark-secondary border border-dark-primary rounded-lg overflow-hidden"
               >
                 {/* Module Header - Compact */}
-                <div className="px-4 py-2 bg-dark-elevated border-b border-dark-border">
-                  <h2 className="text-lg font-bold text-white">
-                    {module.moduleName}
-                    {module.instanceLabel && module.instanceLabel !== module.moduleName && (
-                      <span className="ml-2 text-sm text-primary-500">
-                        ({module.instanceLabel})
-                      </span>
+                <div className="px-4 py-2 bg-dark-elevated border-b border-dark-border flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-lg font-bold text-white">
+                        {module.moduleName}
+                        {module.instanceLabel && module.instanceLabel !== module.moduleName && (
+                          <span className="ml-2 text-sm text-primary-500">
+                            ({module.instanceLabel})
+                          </span>
+                        )}
+                      </h2>
+
+                      {/* Module Progress Indicators */}
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="font-semibold text-primary-500">{moduleProgress}%</span>
+                        <span className="text-gray-500">|</span>
+                        <span className="text-gray-400" title="Pending">{moduleStats.pending}</span>
+                        <span className="text-green-400" title="Pass">{moduleStats.passed}</span>
+                        <span className="text-red-400" title="Fail">{moduleStats.failed}</span>
+                        <span className="text-yellow-400" title="Skipped">{moduleStats.skipped}</span>
+                      </div>
+                    </div>
+                    {module.moduleDescription && (
+                      <p className="text-xs text-gray-400 mt-0.5">{module.moduleDescription}</p>
                     )}
-                  </h2>
-                  {module.moduleDescription && (
-                    <p className="text-xs text-gray-400 mt-0.5">{module.moduleDescription}</p>
-                  )}
+                  </div>
+
+                  {/* Collapse/Expand Button */}
+                  <button
+                    onClick={() => toggleModuleCollapse(module.id)}
+                    className="text-gray-400 hover:text-gray-200 p-1 flex-shrink-0 ml-2"
+                    aria-label={collapsedModules.has(module.id) ? "Expand module" : "Collapse module"}
+                  >
+                    <svg
+                      className={`w-5 h-5 transition-transform ${
+                        collapsedModules.has(module.id) ? '' : 'rotate-180'
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
                 </div>
 
                 {/* Test Cases - Compact Data Sheet Layout */}
-                <div className="divide-y divide-dark-border">
-                  {module.testCases.map((testCase) => {
+                {!collapsedModules.has(module.id) && (
+                  <div className="divide-y divide-dark-border">
+                  {module.testCases
+                    .filter((testCase) => {
+                      // Apply status filter
+                      if (statusFilter === 'All') return true;
+                      return testCase.overallStatus === statusFilter;
+                    })
+                    .map((testCase) => {
                     const testCaseId = testCase.testCase.id;
 
                     // Filter results based on view mode
@@ -629,16 +808,16 @@ export default function WorkingModePage() {
                     });
 
                     return (
-                      <div key={testCaseId} className="py-2 px-4">
+                      <div key={testCaseId} className="py-0.5 px-4">
                         {filteredResults.map((result) => {
                           const expandKey = `${testCaseId}-${result.tester.id}`;
                           const isExpanded = expandedTests.has(expandKey);
                           const isOwnResult = currentTester && result.tester.id === currentTester.id;
 
                           return (
-                            <div key={result.id} className="py-2">
+                            <div key={result.id} className="py-0.5">
                               {/* COLLAPSED ROW: Status circle + Title | Description + Expand Arrow */}
-                              <div className="flex items-center gap-3 hover:bg-dark-elevated/50 px-2 py-1.5 rounded transition-colors">
+                              <div className="flex items-center gap-2 hover:bg-dark-elevated/50 px-2 py-0.5 rounded transition-colors">
                                 {/* Status Circle */}
                                 <div
                                   className={`w-3 h-3 rounded-full flex-shrink-0 ${
@@ -825,10 +1004,13 @@ export default function WorkingModePage() {
                       </div>
                     );
                   })}
-                </div>
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+              );
+            })}
+            </div>
+          </>
         )}
       </main>
     </div>

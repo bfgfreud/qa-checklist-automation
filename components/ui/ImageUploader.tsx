@@ -15,6 +15,7 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const pasteAreaRef = useRef<HTMLDivElement>(null);
 
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -84,80 +85,39 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
     }
   };
 
-  // Handle clipboard paste for this specific testcase
-  const handlePasteFromClipboard = async () => {
-    try {
-      // Try modern Clipboard API first
-      if (navigator.clipboard && navigator.clipboard.read) {
-        const clipboardItems = await navigator.clipboard.read();
-        const imageFiles: File[] = [];
+  // Handle paste event on the hidden paste area
+  const handlePasteEvent = async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const items = e.clipboardData?.items;
+    if (!items) return;
 
-        for (const item of clipboardItems) {
-          for (const type of item.types) {
-            if (type.startsWith('image/')) {
-              const blob = await item.getType(type);
-              const file = new File([blob], `pasted-image-${Date.now()}.png`, { type });
-              imageFiles.push(file);
-            }
-          }
-        }
-
-        if (imageFiles.length > 0) {
-          const dt = new DataTransfer();
-          for (const file of imageFiles) {
-            dt.items.add(file);
-          }
-          await handleFileSelect(dt.files);
-          return;
+    const imageFiles: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          imageFiles.push(file);
         }
       }
+    }
 
-      // Fallback: Try to get image data from clipboard using paste event
-      // Create temporary paste handler
-      const pasteHandler = async (e: ClipboardEvent) => {
-        const items = e.clipboardData?.items;
-        if (!items) {
-          alert('No clipboard data available.');
-          return;
-        }
+    if (imageFiles.length > 0) {
+      const dt = new DataTransfer();
+      for (const file of imageFiles) {
+        dt.items.add(file);
+      }
+      await handleFileSelect(dt.files);
+    } else {
+      alert('No images found in clipboard. Please copy an image first (Ctrl+C or right-click > Copy Image).');
+    }
+  };
 
-        const imageFiles: File[] = [];
-        for (let i = 0; i < items.length; i++) {
-          const item = items[i];
-          if (item.type.startsWith('image/')) {
-            const file = item.getAsFile();
-            if (file) {
-              imageFiles.push(file);
-            }
-          }
-        }
-
-        if (imageFiles.length > 0) {
-          const dt = new DataTransfer();
-          for (const file of imageFiles) {
-            dt.items.add(file);
-          }
-          await handleFileSelect(dt.files);
-        } else {
-          alert('No images found in clipboard. Please copy an image first (Ctrl+C or right-click > Copy Image).');
-        }
-
-        document.removeEventListener('paste', pasteHandler);
-      };
-
-      // Temporarily listen for paste event
-      document.addEventListener('paste', pasteHandler);
-
-      // Trigger paste programmatically
-      document.execCommand('paste');
-
-      // Clean up after 100ms if nothing happened
-      setTimeout(() => {
-        document.removeEventListener('paste', pasteHandler);
-      }, 100);
-    } catch (error) {
-      console.error('Error reading clipboard:', error);
-      alert('Failed to read from clipboard. Try copying the image again (Ctrl+C or right-click > Copy Image).');
+  // Handle click on paste button - focus the hidden paste area
+  const handlePasteButtonClick = () => {
+    if (pasteAreaRef.current) {
+      pasteAreaRef.current.focus();
+      alert('Focused on paste area. Now press Ctrl+V to paste your image.');
     }
   };
 
@@ -170,6 +130,16 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
         multiple={multiple}
         onChange={(e) => handleFileSelect(e.target.files)}
         className="hidden"
+      />
+
+      {/* Hidden paste area for capturing paste events */}
+      <div
+        ref={pasteAreaRef}
+        contentEditable
+        onPaste={handlePasteEvent}
+        className="sr-only"
+        style={{ position: 'absolute', left: '-9999px' }}
+        tabIndex={-1}
       />
 
       {compact ? (
@@ -195,9 +165,9 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
             )}
           </button>
           <button
-            onClick={handlePasteFromClipboard}
+            onClick={handlePasteButtonClick}
             disabled={uploading}
-            title="Paste image from clipboard"
+            title="Click then press Ctrl+V to paste image"
             className="flex-1 px-2 py-0.5 bg-dark-border hover:bg-dark-primary text-gray-400 hover:text-gray-200 rounded text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             <svg className="w-2.5 h-2.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
