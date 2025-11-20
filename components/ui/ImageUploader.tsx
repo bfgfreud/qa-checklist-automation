@@ -86,11 +86,52 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
     }
   };
 
-  // Handle click on paste button - show prompt and focus paste area
-  const handlePasteButtonClick = () => {
+  // Handle click on paste button - auto-trigger paste
+  const handlePasteButtonClick = async () => {
+    // Try modern Clipboard API first (works in most modern browsers with user gesture)
+    try {
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const clipboardItems = await navigator.clipboard.read();
+        const imageFiles: File[] = [];
+
+        for (const clipboardItem of clipboardItems) {
+          for (const type of clipboardItem.types) {
+            if (type.startsWith('image/')) {
+              const blob = await clipboardItem.getType(type);
+              const file = new File([blob], `pasted-image-${Date.now()}.png`, { type });
+              imageFiles.push(file);
+            }
+          }
+        }
+
+        if (imageFiles.length > 0) {
+          const dt = new DataTransfer();
+          for (const file of imageFiles) {
+            dt.items.add(file);
+          }
+          await handleFileSelect(dt.files);
+          return; // Success!
+        }
+      }
+    } catch (err) {
+      console.log('Clipboard API failed, trying fallback:', err);
+    }
+
+    // Fallback: Focus paste area and try execCommand
     setShowPastePrompt(true);
     if (pasteAreaRef.current) {
       pasteAreaRef.current.focus();
+
+      // Try execCommand paste (might work in some browsers)
+      setTimeout(() => {
+        const success = document.execCommand('paste');
+        if (!success) {
+          // If execCommand fails, keep the prompt visible for manual paste
+          console.log('Auto-paste failed, waiting for manual Ctrl+V');
+        } else {
+          setShowPastePrompt(false);
+        }
+      }, 50);
     }
   };
 
