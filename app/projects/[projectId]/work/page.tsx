@@ -46,12 +46,27 @@ export default function WorkingModePage() {
     }
   }>({});
 
+  // Helper to check if two objects are deeply equal
+  const isDeepEqual = (obj1: any, obj2: any): boolean => {
+    if (obj1 === obj2) return true;
+    if (obj1 == null || obj2 == null) return false;
+    if (typeof obj1 !== 'object' || typeof obj2 !== 'object') return false;
+
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+
+    if (keys1.length !== keys2.length) return false;
+
+    for (const key of keys1) {
+      if (!keys2.includes(key)) return false;
+      if (!isDeepEqual(obj1[key], obj2[key])) return false;
+    }
+
+    return true;
+  };
+
   // Load project and checklist data
   const fetchData = async (showLoading = true) => {
-    // Save scroll position before fetching
-    const scrollY = window.scrollY;
-    const scrollX = window.scrollX;
-
     if (showLoading) setLoading(true);
     try {
       const [projectRes, checklistRes] = await Promise.all([
@@ -65,15 +80,18 @@ export default function WorkingModePage() {
       ]);
 
       if (projectResult?.success) {
-        setProject(projectResult.data);
+        // Only update project if it changed
+        if (!isDeepEqual(project, projectResult.data)) {
+          setProject(projectResult.data);
+        }
       }
 
       if (checklistResult?.success) {
-        const data: ProjectChecklistWithTesters = checklistResult.data;
+        const serverData: ProjectChecklistWithTesters = checklistResult.data;
 
         // Auto-assign current tester if not already assigned
         if (currentTester) {
-          const isAssigned = data.assignedTesters?.some(t => t.id === currentTester.id);
+          const isAssigned = serverData.assignedTesters?.some(t => t.id === currentTester.id);
 
           if (!isAssigned) {
             // Silently assign current tester to project
@@ -93,57 +111,69 @@ export default function WorkingModePage() {
           }
         }
 
-        // CRITICAL FIX: If user has active edits, merge with server data
-        // Start with fresh server data, then apply local edits on top
+        // Build the new checklist state
+        let newChecklist: ProjectChecklistWithTesters;
+
+        // If user has active edits, merge with server data
         if (Object.keys(localEditsRef.current).length > 0) {
           console.log('[Polling] Merging server data with local edits:', Object.keys(localEditsRef.current));
 
-          // Deep clone server data
-          const mergedChecklist = JSON.parse(JSON.stringify(data));
+          // Start with server data structure, preserving object references where possible
+          newChecklist = {
+            ...serverData,
+            modules: serverData.modules.map(module => ({
+              ...module,
+              testCases: module.testCases.map(testCase => {
+                const results = testCase.results.map(result => {
+                  const localEdit = localEditsRef.current[result.id];
 
-          // Apply local edits on top of server data
-          mergedChecklist.modules.forEach((module: any) => {
-            module.testCases.forEach((testCase: any) => {
-              testCase.results.forEach((result: any) => {
-                const localEdit = localEditsRef.current[result.id];
-
-                if (localEdit) {
-                  console.log(`[Polling] Applying local edit to result ${result.id}`);
-
-                  // Apply local edit fields
-                  if (localEdit.status !== undefined) {
-                    result.status = localEdit.status;
+                  if (localEdit) {
+                    console.log(`[Polling] Applying local edit to result ${result.id}`);
+                    // Apply local edits on top of server data
+                    return {
+                      ...result,
+                      status: localEdit.status !== undefined ? localEdit.status : result.status,
+                      notes: localEdit.notes !== undefined ? localEdit.notes : result.notes,
+                      testedAt: localEdit.testedAt !== undefined ? localEdit.testedAt : result.testedAt,
+                    };
                   }
-                  if (localEdit.notes !== undefined) {
-                    result.notes = localEdit.notes;
-                  }
-                  if (localEdit.testedAt !== undefined) {
-                    result.testedAt = localEdit.testedAt;
-                  }
-                }
-              });
 
-              // Recalculate overall status with merged data
-              const statuses = testCase.results.map((r: any) => r.status);
-              testCase.overallStatus = getWeakestStatus(statuses);
-            });
-          });
+                  return result;
+                });
 
-          setChecklist(mergedChecklist);
+                // Recalculate overall status
+                const statuses = results.map(r => r.status);
+                return {
+                  ...testCase,
+                  results,
+                  overallStatus: getWeakestStatus(statuses)
+                };
+              })
+            }))
+          };
         } else {
-          // No local edits - safe to use server data as-is
-          setChecklist(data);
+          // No local edits - use server data as-is
+          newChecklist = serverData;
+        }
+
+        // CRITICAL: Only update state if checklist actually changed
+        // This prevents unnecessary re-renders and scroll jumps
+        if (!checklist || !isDeepEqual(checklist, newChecklist)) {
+          console.log('[Polling] Checklist changed, updating state');
+          setChecklist(newChecklist);
+        } else {
+          console.log('[Polling] No changes detected, skipping state update');
         }
 
         // If only one tester, default to single view with current user
-        if (data.assignedTesters && data.assignedTesters.length === 1 && !selectedTester) {
+        if (serverData.assignedTesters && serverData.assignedTesters.length === 1 && !selectedTester) {
           setViewMode('single');
-          setSelectedTester(currentTester || data.assignedTesters[0]);
+          setSelectedTester(currentTester || serverData.assignedTesters[0]);
         }
 
         // If multiple testers and current user hasn't selected yet, default to current user in single view
-        if (data.assignedTesters && data.assignedTesters.length > 1 && !selectedTester && currentTester) {
-          const currentUserIsAssigned = data.assignedTesters.some(t => t.id === currentTester.id);
+        if (serverData.assignedTesters && serverData.assignedTesters.length > 1 && !selectedTester && currentTester) {
+          const currentUserIsAssigned = serverData.assignedTesters.some(t => t.id === currentTester.id);
           if (currentUserIsAssigned) {
             setSelectedTester(currentTester);
           }
@@ -154,18 +184,6 @@ export default function WorkingModePage() {
       setError('Failed to load project data');
     } finally {
       if (showLoading) setLoading(false);
-
-      // Restore scroll position after re-render
-      // Use setTimeout to ensure React has finished rendering the DOM
-      if (!showLoading && (scrollY > 0 || scrollX > 0)) {
-        setTimeout(() => {
-          window.scrollTo({
-            top: scrollY,
-            left: scrollX,
-            behavior: 'instant' // Instant scroll, no smooth animation
-          });
-        }, 0);
-      }
     }
   };
 
