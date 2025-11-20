@@ -850,8 +850,20 @@ export default function WorkingModePage() {
                   {module.testCases
                     .filter((testCase) => {
                       // Apply status filter
-                      if (statusFilter !== 'All' && testCase.overallStatus !== statusFilter) {
-                        return false;
+                      if (statusFilter !== 'All') {
+                        // In single-tester view, filter by current tester's status
+                        // In multi-tester view, filter by overall status
+                        if (viewMode === 'own' && currentTester) {
+                          const currentTesterResult = testCase.results.find(r => r.tester.id === currentTester.id);
+                          if (!currentTesterResult || currentTesterResult.status !== statusFilter) {
+                            return false;
+                          }
+                        } else {
+                          // Multi-tester view: use overall status
+                          if (testCase.overallStatus !== statusFilter) {
+                            return false;
+                          }
+                        }
                       }
 
                       // Apply search filter
