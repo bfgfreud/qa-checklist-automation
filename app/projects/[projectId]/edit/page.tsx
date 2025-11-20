@@ -982,6 +982,7 @@ export default function ProjectEditPage() {
       }
 
       // Reorder modules if needed (compare orderIndex changes)
+      let modulesReordered = 0;
       const modulesNeedReordering = draftModules.some((dm, idx) => {
         const original = originalModules.find(om => om.id === dm.id);
         return original && original.orderIndex !== idx;
@@ -1003,37 +1004,48 @@ export default function ProjectEditPage() {
 
         if (!reorderRes.ok) {
           console.error('Failed to reorder modules');
+        } else {
+          modulesReordered = 1;
+          console.log('[SAVE DEBUG] Successfully reordered modules');
         }
       }
 
       // Reorder testcases if needed (within each module)
+      let testcasesReordered = 0;
       for (const draftModule of draftModules) {
         if (draftModule._isDraft || draftModule._isDeleted) continue; // Skip new/deleted modules
 
         const originalModule = originalModules.find(om => om.id === draftModule.id);
         if (!originalModule) continue;
 
-        // Check if testcase order changed
-        const testcasesNeedReordering = draftModule.testResults.some((tr, idx) => {
-          const originalTr = originalModule.testResults.find(otr => otr.testcaseId === tr.testcaseId);
-          if (!originalTr) return false;
-          const originalIdx = originalModule.testResults.findIndex(otr => otr.testcaseId === tr.testcaseId);
-          return originalIdx !== idx;
+        // Get unique testcase order from draft (first occurrence of each testcaseId)
+        const draftTestcaseOrder: string[] = [];
+        draftModule.testResults.forEach((tr) => {
+          if (tr.testcaseId && !draftTestcaseOrder.includes(tr.testcaseId)) {
+            draftTestcaseOrder.push(tr.testcaseId);
+          }
         });
 
-        if (testcasesNeedReordering) {
-          console.log(`[SAVE DEBUG] Testcase order changed in module "${draftModule.moduleName}", saving reorder...`);
+        // Get unique testcase order from original
+        const originalTestcaseOrder: string[] = [];
+        originalModule.testResults.forEach((tr) => {
+          if (tr.testcaseId && !originalTestcaseOrder.includes(tr.testcaseId)) {
+            originalTestcaseOrder.push(tr.testcaseId);
+          }
+        });
 
-          // Group testcases by testcaseId and assign display_order
-          const testcaseOrderMap = new Map<string, number>();
-          draftModule.testResults.forEach((tr, idx) => {
-            if (tr.testcaseId && !testcaseOrderMap.has(tr.testcaseId)) {
-              testcaseOrderMap.set(tr.testcaseId, idx);
-            }
-          });
+        // Check if order changed by comparing arrays
+        const orderChanged = draftTestcaseOrder.length !== originalTestcaseOrder.length ||
+          draftTestcaseOrder.some((tcId, idx) => tcId !== originalTestcaseOrder[idx]);
 
+        if (orderChanged) {
+          console.log(`[SAVE DEBUG] Testcase order changed in module "${draftModule.moduleName}"`);
+          console.log('[SAVE DEBUG] Original order:', originalTestcaseOrder);
+          console.log('[SAVE DEBUG] New order:', draftTestcaseOrder);
+
+          // Build payload with correct display_order based on unique testcase position
           const reorderPayload = {
-            testcases: Array.from(testcaseOrderMap.entries()).map(([testcaseId, displayOrder]) => ({
+            testcases: draftTestcaseOrder.map((testcaseId, displayOrder) => ({
               testcaseId,
               displayOrder
             }))
@@ -1050,6 +1062,9 @@ export default function ProjectEditPage() {
 
           if (!reorderRes.ok) {
             console.error(`Failed to reorder testcases in module "${draftModule.moduleName}"`);
+          } else {
+            testcasesReordered++;
+            console.log('[SAVE DEBUG] Successfully reordered testcases');
           }
         }
       }
@@ -1069,7 +1084,7 @@ export default function ProjectEditPage() {
       }
 
       // Show success message
-      const totalSaved = modulesToAdd.length + modulesToDelete.length + customTestcasesSaved;
+      const totalSaved = modulesToAdd.length + modulesToDelete.length + customTestcasesSaved + modulesReordered + testcasesReordered;
       const customModuleCount = modulesToAdd.filter(m => m._isCustom).length;
 
       if (totalSaved === 0) {
@@ -1084,6 +1099,12 @@ export default function ProjectEditPage() {
       }
       if (customTestcasesSaved > 0) {
         message += `\n✓ ${customTestcasesSaved} custom testcase(s) saved`;
+      }
+      if (modulesReordered > 0) {
+        message += `\n✓ Modules reordered`;
+      }
+      if (testcasesReordered > 0) {
+        message += `\n✓ ${testcasesReordered} module(s) with reordered testcases`;
       }
       alert(message);
 
