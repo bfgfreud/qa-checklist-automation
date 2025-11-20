@@ -645,6 +645,56 @@ export const checklistService = {
   },
 
   /**
+   * Reorder testcases within a checklist module
+   * CRITICAL: Updates display_order for ALL testers' test results (multi-tester sync)
+   */
+  async reorderChecklistTestcases(
+    moduleId: string,
+    input: { testcases: Array<{ testcaseId: string; displayOrder: number }> }
+  ): Promise<{
+    success: boolean
+    error?: string
+  }> {
+    try {
+      // Verify module exists
+      const { data: module } = await supabase
+        .from('project_checklist_modules')
+        .select('id')
+        .eq('id', moduleId)
+        .single()
+
+      if (!module) {
+        return { success: false, error: 'Checklist module not found' }
+      }
+
+      // Update display_order for each testcase
+      // CRITICAL: Update ALL tester results for each testcase (not just one tester)
+      const updates = input.testcases.map(tc =>
+        supabase
+          .from('checklist_test_results')
+          .update({ display_order: tc.displayOrder })
+          .eq('project_checklist_module_id', moduleId)
+          .eq('testcase_id', tc.testcaseId)
+      )
+
+      const results = await Promise.all(updates)
+
+      const hasError = results.some(result => result.error)
+      if (hasError) {
+        console.error('Error reordering checklist testcases:', results.filter(r => r.error))
+        return { success: false, error: 'Failed to reorder checklist testcases' }
+      }
+
+      console.log(`[reorderChecklistTestcases] Updated display_order for ${input.testcases.length} testcases in module ${moduleId}`)
+
+      return { success: true }
+    } catch (error) {
+      console.error('Unexpected error in reorderChecklistTestcases:', error)
+      return { success: false, error: 'Internal server error' }
+    }
+  },
+
+  /**
    * Update a test result (status, notes, tested_by)
    */
   async updateTestResult(

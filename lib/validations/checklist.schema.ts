@@ -91,6 +91,19 @@ export const reorderChecklistModulesSchema = z.object({
   })).min(1, 'At least one module is required for reordering')
 })
 
+/**
+ * Schema for reordering testcases within a checklist module
+ * CRITICAL: Updates display_order for ALL testers' test results (multi-tester sync)
+ */
+export const reorderChecklistTestcasesSchema = z.object({
+  testcases: z.array(z.object({
+    testcaseId: z.string().uuid('Invalid testcase ID'),
+    displayOrder: z.number()
+      .int('Display order must be an integer')
+      .min(0, 'Display order must be non-negative')
+  })).min(1, 'At least one testcase is required for reordering')
+})
+
 // ============================================
 // Test Result Schemas
 // ============================================
@@ -172,6 +185,7 @@ export const filterTestResultsSchema = z.object({
 export type AddModuleToChecklistInput = z.infer<typeof addModuleToChecklistSchema>
 export type AddCustomTestcaseInput = z.infer<typeof addCustomTestcaseSchema>
 export type ReorderChecklistModulesInput = z.infer<typeof reorderChecklistModulesSchema>
+export type ReorderChecklistTestcasesInput = z.infer<typeof reorderChecklistTestcasesSchema>
 export type UpdateTestResultInput = z.infer<typeof updateTestResultSchema>
 export type UpdateTestResultWithTesterInput = z.infer<typeof updateTestResultWithTesterSchema>
 export type BulkUpdateTestResultsInput = z.infer<typeof bulkUpdateTestResultsSchema>
