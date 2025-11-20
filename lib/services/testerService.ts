@@ -320,6 +320,68 @@ export const testerService = {
         return { success: false, error: 'Failed to assign tester to project' }
       }
 
+      // CRITICAL: Create test results for all existing modules/testcases
+      // This ensures the newly assigned tester has test result rows to work with
+      const { data: existingModules, error: modulesError } = await supabase
+        .from('project_checklist_modules')
+        .select(`
+          id,
+          checklist_test_results (
+            testcase_title,
+            testcase_description,
+            testcase_id
+          )
+        `)
+        .eq('project_id', projectId)
+
+      if (!modulesError && existingModules && existingModules.length > 0) {
+        console.log(`[assignTesterToProject] Creating test results for ${existingModules.length} existing modules`)
+
+        const testResultInserts = []
+
+        for (const module of existingModules) {
+          // Get unique testcases from existing results (to avoid duplicates)
+          const uniqueTestcases = new Map()
+
+          if (module.checklist_test_results && Array.isArray(module.checklist_test_results)) {
+            for (const result of module.checklist_test_results) {
+              const key = result.testcase_id || result.testcase_title
+              if (!uniqueTestcases.has(key)) {
+                uniqueTestcases.set(key, result)
+              }
+            }
+          }
+
+          // Create test result for each unique testcase
+          for (const [, testcase] of uniqueTestcases) {
+            testResultInserts.push({
+              project_checklist_module_id: module.id,
+              tester_id: testerId,
+              testcase_id: testcase.testcase_id || null,
+              testcase_title: testcase.testcase_title,
+              testcase_description: testcase.testcase_description || null,
+              status: 'Pending' as const,
+              notes: null,
+              tested_at: null
+            })
+          }
+        }
+
+        if (testResultInserts.length > 0) {
+          const { error: insertError } = await supabase
+            .from('checklist_test_results')
+            .insert(testResultInserts)
+
+          if (insertError) {
+            console.error('[assignTesterToProject] Error creating test results:', insertError)
+            // Don't fail the assignment if test result creation fails
+            // The user can still work, they just won't have results pre-populated
+          } else {
+            console.log(`[assignTesterToProject] Created ${testResultInserts.length} test results for new tester`)
+          }
+        }
+      }
+
       return { success: true }
     } catch (error) {
       console.error('Unexpected error in assignTesterToProject:', error)

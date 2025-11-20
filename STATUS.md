@@ -166,6 +166,7 @@
   - [x] Expandable test details (notes + images)
   - [x] Per-tester result tracking
   - [x] Weakest status calculation display
+  - [x] Auto-join flow for new projects (detects Legacy Tester and prompts user)
 - [x] Performance optimizations
   - [x] Parallel API fetching (30-40% faster page loads)
   - [x] Fixed naming display (instance label only when different)
@@ -174,11 +175,11 @@
   - [x] PERFORMANCE_OPTIMIZATIONS.md (improvements & future work)
 
 **Pending (Future Enhancements)**:
-- [ ] Auto-join flow for unassigned testers (requires auth)
 - [ ] Drag-drop reordering
 - [ ] Keyboard shortcuts
 - [ ] Export to PDF/Excel
 - [ ] Mobile responsiveness improvements
+- [ ] UI overhaul (mentioned by user - better visual design)
 
 **Files Created This Phase**: 18+ files (components, pages, docs)
 - `app/projects/[projectId]/work/page.tsx` - Working Mode (test execution)
@@ -299,6 +300,7 @@
   - Weakest status calculation (Fail > Skipped > Pass > Pending)
   - Timestamp tracking (shows when each tester tested)
   - Per-tester result isolation
+  - **Auto-join flow** - Detects new projects without testers, prompts to assign self
 
 - ✅ **Performance Optimizations**
   - Parallel API fetching with `Promise.all()` (30-40% faster page loads)
@@ -316,6 +318,13 @@
   - Fixed `module` variable naming conflicts (Next.js reserved word)
   - Fixed type errors in ImageGallery (nullable file_size)
   - Fixed testcaseId type error for custom testcases
+  - **Fixed API routing** - Added `?view=multi-tester` query parameter
+  - **Fixed attachment upload path** - Changed to `/api/checklists/test-results/[id]`
+  - **Fixed Supabase storage** - Created `test-attachments` bucket via setup API
+  - **Fixed test case ordering** - Added stable sorting by creation timestamp
+  - **Fixed status flickering** - Improved polling strategy with local edits preservation
+  - **Fixed notes disappearing** - Implemented local-first merge strategy
+  - **Fixed new project workflow** - Auto-join dialog for projects without testers
 
 ---
 
@@ -352,13 +361,25 @@
    - Accessibility improvements
 
 5. **Future Enhancements (Optional)**
-   - Auto-join flow for unassigned testers (requires auth)
    - Drag-drop reordering of modules and testcases
    - Export checklist to PDF/Excel
    - Dashboard with analytics
    - Email notifications
+   - UI overhaul for better visual design
 
-**Recommended Next Action**: Test the Working Mode with real data, verify all features work end-to-end.
+**CRITICAL NEXT ACTION**:
+**Refresh your browser** to load the new auto-join flow code, then test:
+1. Create a new project
+2. Add 1 module to the checklist
+3. Click "Start Working"
+4. Verify the "Start Testing?" dialog appears
+5. Click "Assign Me & Start"
+6. Test that status updates, notes, and images work WITHOUT:
+   - Status flickering
+   - Notes disappearing while typing
+   - Test cases jumping around
+
+This should fix all three critical bugs by ensuring proper multi-tester structure.
 
 ---
 

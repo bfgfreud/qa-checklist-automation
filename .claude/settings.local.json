@@ -56,7 +56,8 @@
       "Bash(powershell -Command:*)",
       "Bash(set PORT=3005)",
       "Bash(timeout /t 2)",
-      "Bash(rd /s /q \"C:\\Code Stuff\\QA Checklist Automation\\app\\api\\checklists\\modules\\[moduleId]\")"
+      "Bash(rd /s /q \"C:\\Code Stuff\\QA Checklist Automation\\app\\api\\checklists\\modules\\[moduleId]\")",
+      "Bash(node -e:*)"
     ],
     "deny": [],
     "ask": []

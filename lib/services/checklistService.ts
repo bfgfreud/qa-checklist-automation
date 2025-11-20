@@ -886,44 +886,57 @@ export const checklistService = {
         })
 
         // Build test cases with results
-        const testCases: TestCaseWithResults[] = Object.entries(resultsByTestCase).map(([testcaseId, results]) => {
-          // Get testcase info from first result
-          const firstResult = results[0]
-          const testcase = Array.isArray(firstResult.base_testcases)
-            ? firstResult.base_testcases[0]
-            : firstResult.base_testcases
+        const testCases: TestCaseWithResults[] = Object.entries(resultsByTestCase)
+          .map(([testcaseId, results]) => {
+            // Get testcase info from first result
+            const firstResult = results[0]
+            const testcase = Array.isArray(firstResult.base_testcases)
+              ? firstResult.base_testcases[0]
+              : firstResult.base_testcases
 
-          // Build tester results
-          const testerResults: TestResultWithTester[] = results.map(result => {
-            const tester = Array.isArray(result.testers)
-              ? result.testers[0]
-              : result.testers
+            // Build tester results (sort by tester name for consistency)
+            const testerResults: TestResultWithTester[] = results
+              .map(result => {
+                const tester = Array.isArray(result.testers)
+                  ? result.testers[0]
+                  : result.testers
+
+                return {
+                  id: result.id,
+                  tester: tester,
+                  status: result.status,
+                  notes: result.notes,
+                  testedAt: result.tested_at,
+                  attachments: attachmentsByResultId[result.id] || [],
+                  _createdAt: result.created_at // For sorting
+                }
+              })
+              .sort((a, b) => {
+                // Sort by tester name for consistent display
+                return a.tester.name.localeCompare(b.tester.name)
+              })
+
+            // Calculate overall status (weakest)
+            const statuses = testerResults.map(r => r.status)
+            const overallStatus = getWeakestStatus(statuses)
 
             return {
-              id: result.id,
-              tester: tester,
-              status: result.status,
-              notes: result.notes,
-              testedAt: result.tested_at,
-              attachments: attachmentsByResultId[result.id] || []
+              testCase: {
+                id: testcase?.id || testcaseId,
+                title: testcase?.title || 'Unknown',
+                description: testcase?.description,
+                priority: (testcase?.priority || 'Medium') as 'High' | 'Medium' | 'Low'
+              },
+              results: testerResults.map(({ _createdAt, ...rest }) => rest), // Remove temp field
+              overallStatus,
+              _sortKey: firstResult.created_at || testcaseId // For sorting test cases
             }
           })
-
-          // Calculate overall status (weakest)
-          const statuses = testerResults.map(r => r.status)
-          const overallStatus = getWeakestStatus(statuses)
-
-          return {
-            testCase: {
-              id: testcase?.id || testcaseId,
-              title: testcase?.title || 'Unknown',
-              description: testcase?.description,
-              priority: (testcase?.priority || 'Medium') as 'High' | 'Medium' | 'Low'
-            },
-            results: testerResults,
-            overallStatus
-          }
-        })
+          .sort((a, b) => {
+            // Sort test cases by creation order for stable display
+            return a._sortKey.localeCompare(b._sortKey)
+          })
+          .map(({ _sortKey, ...testCase }) => testCase) // Remove temp sorting field
 
         return {
           id: module.id,

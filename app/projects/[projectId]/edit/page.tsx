@@ -8,6 +8,7 @@ import { ChecklistModuleWithResults } from '@/types/checklist';
 import { Button } from '@/components/ui/Button';
 import { AddModuleDialog } from '@/components/checklists/AddModuleDialog';
 import { AddTestCaseDialog } from '@/components/checklists/AddTestCaseDialog';
+import { useCurrentTester } from '@/contexts/TesterContext';
 
 type DraftModule = ChecklistModuleWithResults & {
   _isDraft?: boolean; // Marks module as not yet saved
@@ -20,6 +21,7 @@ export default function ProjectEditPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.projectId as string;
+  const { currentTester } = useCurrentTester();
 
   const [project, setProject] = useState<Project | null>(null);
   const [availableModules, setAvailableModules] = useState<Module[]>([]);
@@ -69,6 +71,25 @@ export default function ProjectEditPage() {
           setProject(projectResult.data);
         }
 
+        // Auto-assign current tester if not already assigned
+        if (currentTester && projectResult?.success) {
+          const testersRes = await fetch(`/api/projects/${projectId}/testers`);
+          const testersResult = await testersRes.json();
+
+          if (testersResult?.success) {
+            const isAssigned = testersResult.data?.some((t: { id: string }) => t.id === currentTester.id);
+
+            if (!isAssigned) {
+              console.log('[EditMode] Auto-assigning current tester:', currentTester.name);
+              await fetch(`/api/projects/${projectId}/testers`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ testerId: currentTester.id })
+              });
+            }
+          }
+        }
+
         // Update available modules
         if (modulesResult?.success) {
           const normalized = modulesResult.data.map((module: Record<string, unknown>) => ({
@@ -92,7 +113,7 @@ export default function ProjectEditPage() {
     };
 
     fetchData();
-  }, [projectId]);
+  }, [projectId, currentTester?.id]);
 
   // Warn before leaving with unsaved changes
   useEffect(() => {

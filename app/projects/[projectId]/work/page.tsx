@@ -9,11 +9,13 @@ import { Button } from '@/components/ui/Button';
 import { TesterAvatar } from '@/components/ui/TesterAvatar';
 import { ImageUploader } from '@/components/ui/ImageUploader';
 import { ImageGallery } from '@/components/ui/ImageGallery';
+import { useCurrentTester } from '@/contexts/TesterContext';
 
 export default function WorkingModePage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.projectId as string;
+  const { currentTester } = useCurrentTester();
 
   const [project, setProject] = useState<Project | null>(null);
   const [checklist, setChecklist] = useState<ProjectChecklistWithTesters | null>(null);
@@ -24,23 +26,36 @@ export default function WorkingModePage() {
   const [viewMode, setViewMode] = useState<'all' | 'single'>('all');
   const [selectedTester, setSelectedTester] = useState<Tester | null>(null);
 
-  // Current user (for now, we'll detect if they're assigned)
-  const [currentTester, setCurrentTester] = useState<Tester | null>(null);
-  const [showJoinDialog, setShowJoinDialog] = useState(false);
-
   // Expanded test cases (for notes and attachments)
   const [expandedTests, setExpandedTests] = useState<Set<string>>(new Set());
 
   // Polling interval (5 seconds)
   const [isPolling, setIsPolling] = useState(true);
 
+  // Track pending updates to prevent polling from overwriting optimistic updates
+  const pendingUpdatesRef = useRef<Set<string>>(new Set());
+  const pausePollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Track local edits to preserve them during polling
+  const localEditsRef = useRef<{
+    [resultId: string]: {
+      notes?: string;
+      status?: TestStatus;
+      testedAt?: string;
+      lastActivity?: number;
+    }
+  }>({});
+
   // Load project and checklist data
   const fetchData = async (showLoading = true) => {
+    // Save scroll position before fetching
+    const scrollY = window.scrollY;
+
     if (showLoading) setLoading(true);
     try {
       const [projectRes, checklistRes] = await Promise.all([
         fetch(`/api/projects/${projectId}`),
-        fetch(`/api/checklists/${projectId}`),
+        fetch(`/api/checklists/${projectId}?view=multi-tester`),
       ]);
 
       const [projectResult, checklistResult] = await Promise.all([
@@ -54,33 +69,107 @@ export default function WorkingModePage() {
 
       if (checklistResult?.success) {
         const data: ProjectChecklistWithTesters = checklistResult.data;
-        setChecklist(data);
 
-        // If only one tester, default to single view
-        if (data.assignedTesters.length === 1 && !selectedTester) {
-          setViewMode('single');
-          setSelectedTester(data.assignedTesters[0]);
-          setCurrentTester(data.assignedTesters[0]);
+        // Auto-assign current tester if not already assigned
+        if (currentTester) {
+          const isAssigned = data.assignedTesters?.some(t => t.id === currentTester.id);
+
+          if (!isAssigned) {
+            // Silently assign current tester to project
+            try {
+              await fetch(`/api/projects/${projectId}/testers`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ testerId: currentTester.id })
+              });
+
+              // Reload data to get updated assignments
+              await fetchData(showLoading);
+              return;
+            } catch (err) {
+              console.error('Error auto-assigning tester:', err);
+            }
+          }
         }
 
-        // TODO: Detect if current user is in assignedTesters
-        // For now, we'll assume they're not assigned if no tester found
-        // setShowJoinDialog(true);
+        // CRITICAL FIX: If user has active edits, merge with server data
+        // Start with fresh server data, then apply local edits on top
+        if (Object.keys(localEditsRef.current).length > 0) {
+          console.log('[Polling] Merging server data with local edits:', Object.keys(localEditsRef.current));
+
+          // Deep clone server data
+          const mergedChecklist = JSON.parse(JSON.stringify(data));
+
+          // Apply local edits on top of server data
+          mergedChecklist.modules.forEach((module: any) => {
+            module.testCases.forEach((testCase: any) => {
+              testCase.results.forEach((result: any) => {
+                const localEdit = localEditsRef.current[result.id];
+
+                if (localEdit) {
+                  console.log(`[Polling] Applying local edit to result ${result.id}`);
+
+                  // Apply local edit fields
+                  if (localEdit.status !== undefined) {
+                    result.status = localEdit.status;
+                  }
+                  if (localEdit.notes !== undefined) {
+                    result.notes = localEdit.notes;
+                  }
+                  if (localEdit.testedAt !== undefined) {
+                    result.testedAt = localEdit.testedAt;
+                  }
+                }
+              });
+
+              // Recalculate overall status with merged data
+              const statuses = testCase.results.map((r: any) => r.status);
+              testCase.overallStatus = getWeakestStatus(statuses);
+            });
+          });
+
+          setChecklist(mergedChecklist);
+        } else {
+          // No local edits - safe to use server data as-is
+          setChecklist(data);
+        }
+
+        // If only one tester, default to single view with current user
+        if (data.assignedTesters && data.assignedTesters.length === 1 && !selectedTester) {
+          setViewMode('single');
+          setSelectedTester(currentTester || data.assignedTesters[0]);
+        }
+
+        // If multiple testers and current user hasn't selected yet, default to current user in single view
+        if (data.assignedTesters && data.assignedTesters.length > 1 && !selectedTester && currentTester) {
+          const currentUserIsAssigned = data.assignedTesters.some(t => t.id === currentTester.id);
+          if (currentUserIsAssigned) {
+            setSelectedTester(currentTester);
+          }
+        }
       }
     } catch (err) {
       console.error('Error loading project:', err);
       setError('Failed to load project data');
     } finally {
       if (showLoading) setLoading(false);
+
+      // Restore scroll position after re-render (next tick)
+      if (!showLoading && scrollY > 0) {
+        requestAnimationFrame(() => {
+          window.scrollTo(0, scrollY);
+        });
+      }
     }
   };
 
-  // Initial load
+  // Initial load - reload when currentTester changes (e.g., user switches identity)
   useEffect(() => {
     fetchData();
-  }, [projectId]);
+  }, [projectId, currentTester?.id]);
 
   // Polling for updates (every 5 seconds)
+  // Now safe to poll even with local edits - they'll be preserved!
   useEffect(() => {
     if (!isPolling) return;
 
@@ -106,17 +195,28 @@ export default function WorkingModePage() {
 
   // Debounced notes update
   const notesTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
+  const notesClearTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
 
   const updateTestNotes = (resultId: string, testerId: string, notes: string, currentStatus: TestStatus) => {
-    // Clear existing timeout for this result
+    // Store local edit immediately to preserve it during polling
+    localEditsRef.current[resultId] = {
+      ...localEditsRef.current[resultId],
+      notes,
+      lastActivity: Date.now() // Track last typing activity
+    };
+
+    // Clear existing timeouts for this result
     if (notesTimeoutRef.current[resultId]) {
       clearTimeout(notesTimeoutRef.current[resultId]);
+    }
+    if (notesClearTimeoutRef.current[resultId]) {
+      clearTimeout(notesClearTimeoutRef.current[resultId]);
     }
 
     // Set new timeout for auto-save (1.5 seconds after user stops typing)
     notesTimeoutRef.current[resultId] = setTimeout(async () => {
       try {
-        const response = await fetch(`/api/test-results/${resultId}`, {
+        const response = await fetch(`/api/checklists/test-results/${resultId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ testerId, status: currentStatus, notes }),
@@ -126,42 +226,92 @@ export default function WorkingModePage() {
           throw new Error('Failed to save notes');
         }
 
-        // Silently refresh data in background
-        fetchData(false);
+        console.log(`[Notes] Saved successfully for ${resultId}, will clear local edit after 10s of inactivity`);
+
+        // Clear local edit after 10 seconds of NO MORE TYPING
+        // This is longer than the save debounce, so it only clears if user has stopped working
+        notesClearTimeoutRef.current[resultId] = setTimeout(() => {
+          const edit = localEditsRef.current[resultId];
+          if (edit && edit.lastActivity) {
+            const timeSinceLastActivity = Date.now() - edit.lastActivity;
+            // Only clear if more than 10 seconds since last typing
+            if (timeSinceLastActivity >= 10000) {
+              console.log(`[Notes] Clearing local edit for ${resultId} after inactivity`);
+              delete localEditsRef.current[resultId];
+            }
+          }
+        }, 10000);
+
       } catch (err) {
         console.error('Error saving notes:', err);
         alert('Failed to save notes. Please try again.');
+        // Keep local edit on error so user doesn't lose their work
       }
     }, 1500);
   };
 
   // Update test result status
+  const statusClearTimeoutRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
+
   const updateTestStatus = async (
     resultId: string,
     testerId: string,
     status: TestStatus,
     notes?: string
   ) => {
-    // Optimistically update the UI
+    const testedAt = new Date().toISOString();
+
+    // Store local edit immediately to preserve it during polling
+    localEditsRef.current[resultId] = {
+      ...localEditsRef.current[resultId],
+      status,
+      testedAt,
+      lastActivity: Date.now()
+    };
+
+    // Clear any existing clear timeout
+    if (statusClearTimeoutRef.current[resultId]) {
+      clearTimeout(statusClearTimeoutRef.current[resultId]);
+    }
+
+    // Optimistically update the UI (preserve exact structure and order)
     if (checklist) {
-      const updatedChecklist = { ...checklist };
-      updatedChecklist.modules.forEach((module) => {
-        module.testCases.forEach((testCase) => {
-          const result = testCase.results.find((r) => r.id === resultId);
-          if (result) {
-            result.status = status;
-            result.testedAt = new Date().toISOString();
-            // Recalculate overall status (weakest status logic)
-            const statuses = testCase.results.map((r) => r.status);
-            testCase.overallStatus = getWeakestStatus(statuses);
-          }
-        });
-      });
+      // CRITICAL: Shallow copy modules array to preserve order
+      const updatedChecklist = {
+        ...checklist,
+        modules: checklist.modules.map(module => ({
+          ...module,
+          testCases: module.testCases.map(testCase => {
+            const resultToUpdate = testCase.results.find((r: any) => r.id === resultId);
+
+            if (resultToUpdate) {
+              // Found the result to update
+              const updatedResults = testCase.results.map((r: any) =>
+                r.id === resultId
+                  ? { ...r, status, testedAt }
+                  : r
+              );
+
+              // Recalculate overall status with new data
+              const statuses = updatedResults.map((r: any) => r.status);
+
+              return {
+                ...testCase,
+                results: updatedResults,
+                overallStatus: getWeakestStatus(statuses)
+              };
+            }
+
+            return testCase; // No change for this test case
+          })
+        }))
+      };
+
       setChecklist(updatedChecklist);
     }
 
     try {
-      const response = await fetch(`/api/test-results/${resultId}`, {
+      const response = await fetch(`/api/checklists/test-results/${resultId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ testerId, status, notes }),
@@ -171,12 +321,24 @@ export default function WorkingModePage() {
         throw new Error('Failed to update test result');
       }
 
-      // Refresh checklist data in background
-      fetchData(false);
+      console.log(`[Status] Updated successfully for ${resultId}, will clear after 10s inactivity`);
+
+      // Clear local edit after 10 seconds of no more clicks
+      statusClearTimeoutRef.current[resultId] = setTimeout(() => {
+        const edit = localEditsRef.current[resultId];
+        if (edit && edit.lastActivity) {
+          const timeSinceLastActivity = Date.now() - edit.lastActivity;
+          if (timeSinceLastActivity >= 10000) {
+            console.log(`[Status] Clearing local edit for ${resultId} after inactivity`);
+            delete localEditsRef.current[resultId];
+          }
+        }
+      }, 10000);
+
     } catch (err) {
       console.error('Error updating test result:', err);
       alert('Failed to update test result. Please try again.');
-      // Revert optimistic update by refreshing
+      // Keep local edit on error so user doesn't lose their change
       fetchData(false);
     }
   };
@@ -189,12 +351,23 @@ export default function WorkingModePage() {
     return 'Pending';
   };
 
-  // Join project as tester
-  const handleJoinProject = async () => {
-    // TODO: Implement tester assignment
-    // For now, just close the dialog
-    setShowJoinDialog(false);
-  };
+  // Prompt user to set their name first
+  if (!currentTester) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <svg className="w-16 h-16 text-primary-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          <h2 className="text-2xl font-bold text-white mb-2">Set Your Name First</h2>
+          <p className="text-gray-400 mb-6">
+            Please click "Set Your Name" in the top-right corner to identify yourself before working on tests.
+          </p>
+          <Button onClick={() => router.back()}>Go Back</Button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -282,6 +455,12 @@ export default function WorkingModePage() {
                 <span className="text-xs text-gray-500">
                   {isPolling ? 'Live' : 'Paused'}
                 </span>
+                {/* Debug: Show active edits count */}
+                {Object.keys(localEditsRef.current).length > 0 && (
+                  <span className="text-xs text-yellow-400 ml-2">
+                    ({Object.keys(localEditsRef.current).length} unsaved)
+                  </span>
+                )}
               </div>
 
               {/* Quick Stats */}
@@ -297,7 +476,7 @@ export default function WorkingModePage() {
               </div>
 
               {/* View Mode Toggle (only if multiple testers) */}
-              {checklist.assignedTesters.length > 1 && (
+              {checklist.assignedTesters && checklist.assignedTesters.length > 1 && (
                 <div className="flex items-center gap-2 bg-dark-elevated rounded-lg p-1">
                   <button
                     onClick={() => setViewMode('all')}
@@ -312,8 +491,9 @@ export default function WorkingModePage() {
                   <button
                     onClick={() => {
                       setViewMode('single');
-                      if (!selectedTester && checklist.assignedTesters.length > 0) {
-                        setSelectedTester(checklist.assignedTesters[0]);
+                      // Set to current tester when switching to "My Tests Only"
+                      if (currentTester) {
+                        setSelectedTester(currentTester);
                       }
                     }}
                     className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
@@ -327,22 +507,13 @@ export default function WorkingModePage() {
                 </div>
               )}
 
-              {/* Tester Selector (for single view) */}
-              {viewMode === 'single' && checklist.assignedTesters.length > 1 && (
-                <select
-                  value={selectedTester?.id || ''}
-                  onChange={(e) => {
-                    const tester = checklist.assignedTesters.find((t) => t.id === e.target.value);
-                    setSelectedTester(tester || null);
-                  }}
-                  className="bg-dark-elevated border border-dark-border text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  {checklist.assignedTesters.map((tester) => (
-                    <option key={tester.id} value={tester.id}>
-                      {tester.name}
-                    </option>
-                  ))}
-                </select>
+              {/* Show current tester name in single view */}
+              {viewMode === 'single' && currentTester && (
+                <div className="flex items-center gap-2 bg-dark-elevated rounded-lg px-4 py-2 border border-dark-border">
+                  <span className="text-sm text-gray-400">Viewing tests for:</span>
+                  <TesterAvatar tester={currentTester} size="sm" />
+                  <span className="text-sm font-medium text-white">{currentTester.name}</span>
+                </div>
               )}
             </div>
           </div>
@@ -437,9 +608,18 @@ export default function WorkingModePage() {
                         {/* Tester Results */}
                         <div className="space-y-3 ml-7">
                           {testCase.results
-                            .filter((result) =>
-                              viewMode === 'all' || result.tester.id === selectedTester?.id
-                            )
+                            .filter((result) => {
+                              // Filter out Legacy Tester if real testers exist
+                              const hasRealTesters = checklist.assignedTesters && checklist.assignedTesters.some(t => t.email !== 'legacy@system');
+                              const isLegacyTester = result.tester.email === 'legacy@system';
+
+                              if (hasRealTesters && isLegacyTester) {
+                                return false; // Hide Legacy Tester results
+                              }
+
+                              // Apply view mode filter
+                              return viewMode === 'all' || result.tester.id === selectedTester?.id;
+                            })
                             .map((result) => (
                             <div
                               key={result.id}
@@ -453,24 +633,35 @@ export default function WorkingModePage() {
                                   {result.tester.name}
                                 </span>
 
-                                {/* Status Buttons */}
+                                {/* Status Buttons - Only editable by the assigned tester */}
                                 <div className="flex-1 flex items-center gap-2">
-                                  {(['Pending', 'Pass', 'Fail', 'Skipped'] as TestStatus[]).map((status) => (
-                                    <button
-                                      key={status}
-                                      onClick={() => updateTestStatus(result.id, result.tester.id, status, result.notes || undefined)}
-                                      className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                                        result.status === status
-                                          ? status === 'Pass' ? 'bg-green-500 text-white' :
-                                            status === 'Fail' ? 'bg-red-500 text-white' :
-                                            status === 'Skipped' ? 'bg-yellow-500 text-white' :
-                                            'bg-gray-500 text-white'
-                                          : 'bg-dark-border text-gray-400 hover:bg-dark-primary'
-                                      }`}
-                                    >
-                                      {status}
-                                    </button>
-                                  ))}
+                                  {(['Pending', 'Pass', 'Fail', 'Skipped'] as TestStatus[]).map((status) => {
+                                    const isOwnResult = currentTester && result.tester.id === currentTester.id;
+
+                                    return (
+                                      <button
+                                        key={status}
+                                        onClick={() => {
+                                          if (isOwnResult) {
+                                            updateTestStatus(result.id, result.tester.id, status, result.notes || undefined);
+                                          }
+                                        }}
+                                        disabled={!isOwnResult}
+                                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                                          result.status === status
+                                            ? status === 'Pass' ? 'bg-green-500 text-white' :
+                                              status === 'Fail' ? 'bg-red-500 text-white' :
+                                              status === 'Skipped' ? 'bg-yellow-500 text-white' :
+                                              'bg-gray-500 text-white'
+                                            : isOwnResult
+                                              ? 'bg-dark-border text-gray-400 hover:bg-dark-primary cursor-pointer'
+                                              : 'bg-dark-border text-gray-600 cursor-not-allowed opacity-50'
+                                        }`}
+                                      >
+                                        {status}
+                                      </button>
+                                    );
+                                  })}
                                 </div>
 
                                 {/* Tested At */}
@@ -499,72 +690,88 @@ export default function WorkingModePage() {
                               </div>
 
                               {/* Expanded: Notes and Attachments */}
-                              {expandedTests.has(testCaseId + result.tester.id) && (
-                                <div className="mt-4 space-y-4">
-                                  {/* Notes */}
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-2">
-                                      Notes
-                                    </label>
-                                    <textarea
-                                      value={result.notes || ''}
-                                      onChange={(e) => {
-                                        const newNotes = e.target.value;
-                                        // Update local state immediately
-                                        if (checklist) {
-                                          const updatedChecklist = { ...checklist };
-                                          updatedChecklist.modules.forEach((m) => {
-                                            m.testCases.forEach((tc) => {
-                                              const r = tc.results.find((res) => res.id === result.id);
-                                              if (r) {
-                                                r.notes = newNotes;
-                                              }
+                              {expandedTests.has(testCaseId + result.tester.id) && (() => {
+                                const isOwnResult = currentTester && result.tester.id === currentTester.id;
+
+                                return (
+                                  <div className="mt-4 space-y-4">
+                                    {/* Notes */}
+                                    <div>
+                                      <label className="block text-sm font-medium text-gray-400 mb-2">
+                                        Notes {!isOwnResult && <span className="text-xs text-gray-500">(Read-only)</span>}
+                                      </label>
+                                      <textarea
+                                        value={result.notes || ''}
+                                        onChange={(e) => {
+                                          if (!isOwnResult) return;
+
+                                          const newNotes = e.target.value;
+                                          // Update local state immediately
+                                          if (checklist) {
+                                            const updatedChecklist = { ...checklist };
+                                            updatedChecklist.modules.forEach((m) => {
+                                              m.testCases.forEach((tc) => {
+                                                const r = tc.results.find((res) => res.id === result.id);
+                                                if (r) {
+                                                  r.notes = newNotes;
+                                                }
+                                              });
                                             });
-                                          });
-                                          setChecklist(updatedChecklist);
-                                        }
-                                        // Debounced save
-                                        updateTestNotes(result.id, result.tester.id, newNotes, result.status);
-                                      }}
-                                      placeholder="Add notes about this test..."
-                                      className="w-full bg-dark-bg border border-dark-border text-white rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-                                      rows={3}
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">
-                                      Auto-saves 1.5s after you stop typing
-                                    </p>
-                                  </div>
+                                            setChecklist(updatedChecklist);
+                                          }
+                                          // Debounced save
+                                          updateTestNotes(result.id, result.tester.id, newNotes, result.status);
+                                        }}
+                                        readOnly={!isOwnResult}
+                                        placeholder={isOwnResult ? "Add notes about this test..." : ""}
+                                        className={`w-full bg-dark-bg border border-dark-border text-white rounded px-3 py-2 text-sm resize-none ${
+                                          isOwnResult
+                                            ? 'focus:outline-none focus:ring-2 focus:ring-primary-500'
+                                            : 'opacity-60 cursor-not-allowed'
+                                        }`}
+                                        rows={3}
+                                      />
+                                      {isOwnResult && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          Auto-saves 1.5s after you stop typing
+                                        </p>
+                                      )}
+                                    </div>
 
-                                  {/* Attachments */}
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-2">
-                                      Attachments ({result.attachments.length})
-                                    </label>
+                                    {/* Attachments */}
+                                    <div>
+                                      <label className="block text-sm font-medium text-gray-400 mb-2">
+                                        Attachments ({result.attachments.length})
+                                      </label>
 
-                                    {/* Image Gallery */}
-                                    {result.attachments.length > 0 && (
-                                      <div className="mb-4">
-                                        <ImageGallery
-                                          attachments={result.attachments}
-                                          onDelete={(attachmentId) => {
-                                            // Refresh checklist after delete
+                                      {/* Image Gallery */}
+                                      {result.attachments.length > 0 && (
+                                        <div className="mb-4">
+                                          <ImageGallery
+                                            attachments={result.attachments}
+                                            onDelete={isOwnResult ? (attachmentId) => {
+                                              // Refresh checklist after delete
+                                              fetchData(false);
+                                            } : undefined}
+                                            readonly={!isOwnResult}
+                                          />
+                                        </div>
+                                      )}
+
+                                      {/* Image Uploader - Only show for own results */}
+                                      {isOwnResult && (
+                                        <ImageUploader
+                                          testResultId={result.id}
+                                          onUploadComplete={(url) => {
+                                            // Refresh checklist after upload
                                             fetchData(false);
                                           }}
                                         />
-                                      </div>
-                                    )}
-
-                                    {/* Image Uploader */}
-                                    <ImageUploader
-                                      testResultId={result.id}
-                                      onUploadComplete={(url) => {
-                                        // Refresh checklist after upload
-                                        fetchData(false);
-                                      }}
-                                    />
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                );
+                              })()}
                             </div>
                           ))}
                         </div>
@@ -577,26 +784,6 @@ export default function WorkingModePage() {
           </div>
         )}
       </main>
-
-      {/* Join Project Dialog */}
-      {showJoinDialog && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-dark-secondary border border-dark-primary rounded-lg p-6 max-w-md">
-            <h3 className="text-xl font-bold text-white mb-2">Join Project?</h3>
-            <p className="text-gray-400 mb-6">
-              You&apos;re not assigned to this project as a tester. Would you like to join?
-            </p>
-            <div className="flex items-center gap-3">
-              <Button onClick={handleJoinProject}>
-                Join Project
-              </Button>
-              <Button variant="secondary" onClick={() => setShowJoinDialog(false)}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
