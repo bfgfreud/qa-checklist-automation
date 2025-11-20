@@ -240,10 +240,10 @@ export default function ProjectEditPage() {
     }
 
     setDraftModules((prev) => {
-      const module = prev.find((m) => m.id === draftModuleId);
+      const targetModule = prev.find((m) => m.id === draftModuleId);
 
       // If it's a draft (not yet saved), just remove it
-      if (module?._isDraft) {
+      if (targetModule?._isDraft) {
         return prev.filter((m) => m.id !== draftModuleId);
       }
 
@@ -378,8 +378,8 @@ export default function ProjectEditPage() {
         const newTestResults = testCaseIds.map((testCaseId, index) => {
           // Find the testcase from available modules
           let testCase: TestCase | undefined;
-          for (const module of availableModules) {
-            testCase = module.testCases?.find((tc) => tc.id === testCaseId);
+          for (const availModule of availableModules) {
+            testCase = availModule.testCases?.find((tc) => tc.id === testCaseId);
             if (testCase) break;
           }
 
@@ -534,18 +534,18 @@ export default function ProjectEditPage() {
       })));
 
       // Delete modules
-      for (const module of modulesToDelete) {
-        const response = await fetch(`/api/checklists/modules/${module.id}`, {
+      for (const mod of modulesToDelete) {
+        const response = await fetch(`/api/checklists/modules/${mod.id}`, {
           method: 'DELETE',
         });
         if (!response.ok) {
-          throw new Error(`Failed to delete module: ${module.moduleName}`);
+          throw new Error(`Failed to delete module: ${mod.moduleName}`);
         }
       }
 
       // Add new modules (both library and custom)
-      for (const module of modulesToAdd) {
-        if (module._isCustom) {
+      for (const mod of modulesToAdd) {
+        if (mod._isCustom) {
           // CUSTOM MODULE: Create with no library reference
           const response = await fetch('/api/checklists/modules', {
             method: 'POST',
@@ -553,15 +553,15 @@ export default function ProjectEditPage() {
             body: JSON.stringify({
               projectId,
               isCustom: true,
-              moduleName: module.moduleName,
-              moduleDescription: module.moduleDescription,
-              instanceLabel: module.instanceLabel,
+              moduleName: mod.moduleName,
+              moduleDescription: mod.moduleDescription,
+              instanceLabel: mod.instanceLabel,
             }),
           });
 
           if (!response.ok) {
             const errorResult = await response.json();
-            throw new Error(errorResult.error || `Failed to add custom module: ${module.moduleName}`);
+            throw new Error(errorResult.error || `Failed to add custom module: ${mod.moduleName}`);
           }
 
           // Get the created module's real ID from response
@@ -569,13 +569,13 @@ export default function ProjectEditPage() {
           const newModuleId = result.data?.id;
 
           if (!newModuleId) {
-            throw new Error(`Failed to get module ID for: ${module.moduleName}`);
+            throw new Error(`Failed to get module ID for: ${mod.moduleName}`);
           }
 
           // Add ALL testcases to the custom module
           // Custom modules don't have library testcases, so all testResults are custom
-          const customTestcases = module.testResults || [];
-          console.log(`[SAVE DEBUG] Saving ${customTestcases.length} testcases for custom module "${module.moduleName}"`);
+          const customTestcases = mod.testResults || [];
+          console.log(`[SAVE DEBUG] Saving ${customTestcases.length} testcases for custom module "${mod.moduleName}"`);
 
           for (const testcase of customTestcases) {
             const tcResponse = await fetch(`/api/checklists/modules/${newModuleId}/testcases`, {
@@ -604,14 +604,14 @@ export default function ProjectEditPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               projectId,
-              moduleId: module.moduleId,
-              instanceLabel: module.instanceLabel,
+              moduleId: mod.moduleId,
+              instanceLabel: mod.instanceLabel,
             }),
           });
 
           if (!response.ok) {
             const errorResult = await response.json();
-            throw new Error(errorResult.error || `Failed to add module: ${module.moduleName}`);
+            throw new Error(errorResult.error || `Failed to add module: ${mod.moduleName}`);
           }
         }
       }

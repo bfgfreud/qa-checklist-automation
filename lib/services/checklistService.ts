@@ -563,7 +563,7 @@ export const checklistService = {
       const mappedResults: ChecklistTestResult[] = (testResults || []).map(result => ({
         id: result.id,
         projectChecklistModuleId: result.project_checklist_module_id,
-        testcaseId: undefined, // No reference
+        testcaseId: '', // Custom testcases have no library reference
         testcaseTitle: result.testcase_title,
         testcaseDescription: result.testcase_description || undefined,
         testcasePriority: (result.testcase_priority || 'Medium') as 'High' | 'Medium' | 'Low',
