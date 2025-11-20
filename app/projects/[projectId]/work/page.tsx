@@ -705,7 +705,14 @@ export default function WorkingModePage() {
                                 <div className="mt-2 ml-6 grid grid-cols-12 gap-4 bg-dark-elevated/30 p-3 rounded">
                                   {/* Column 1: Status Buttons (25% = 3 cols) */}
                                   <div className="col-span-3">
-                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">Status</label>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                      <label className="text-xs font-medium text-gray-400">Status</label>
+                                      {result.testedAt && (
+                                        <span className="text-xs text-gray-500">
+                                          {new Date(result.testedAt).toLocaleTimeString()}
+                                        </span>
+                                      )}
+                                    </div>
                                     <div className="flex flex-wrap gap-1.5">
                                       {(['Pending', 'Pass', 'Fail', 'Skipped'] as TestStatus[]).map((status) => (
                                         <button
@@ -731,11 +738,6 @@ export default function WorkingModePage() {
                                         </button>
                                       ))}
                                     </div>
-                                    {result.testedAt && (
-                                      <p className="text-xs text-gray-500 mt-2">
-                                        {new Date(result.testedAt).toLocaleTimeString()}
-                                      </p>
-                                    )}
                                   </div>
 
                                   {/* Column 2: Notes (40% = 5 cols) */}
@@ -767,11 +769,11 @@ export default function WorkingModePage() {
                                       }}
                                       onFocus={(e) => {
                                         // Expand on focus
-                                        e.target.rows = 8;
+                                        e.target.rows = 6;
                                       }}
                                       onBlur={(e) => {
                                         // Collapse on blur
-                                        e.target.rows = 3;
+                                        e.target.rows = 1;
                                       }}
                                       readOnly={!isOwnResult}
                                       placeholder={isOwnResult ? "Add notes..." : ""}
@@ -780,13 +782,8 @@ export default function WorkingModePage() {
                                           ? 'focus:outline-none focus:ring-1 focus:ring-primary-500'
                                           : 'opacity-60 cursor-not-allowed'
                                       }`}
-                                      rows={3}
+                                      rows={1}
                                     />
-                                    {isOwnResult && (
-                                      <p className="text-xs text-gray-500 mt-1">
-                                        Auto-saves 1.5s after you stop typing
-                                      </p>
-                                    )}
                                   </div>
 
                                   {/* Column 3: Attachments (35% = 4 cols) */}

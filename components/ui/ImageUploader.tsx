@@ -87,31 +87,77 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
   // Handle clipboard paste for this specific testcase
   const handlePasteFromClipboard = async () => {
     try {
-      const clipboardItems = await navigator.clipboard.read();
-      const imageFiles: File[] = [];
+      // Try modern Clipboard API first
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const clipboardItems = await navigator.clipboard.read();
+        const imageFiles: File[] = [];
 
-      for (const item of clipboardItems) {
-        for (const type of item.types) {
-          if (type.startsWith('image/')) {
-            const blob = await item.getType(type);
-            const file = new File([blob], `pasted-image-${Date.now()}.png`, { type });
-            imageFiles.push(file);
+        for (const item of clipboardItems) {
+          for (const type of item.types) {
+            if (type.startsWith('image/')) {
+              const blob = await item.getType(type);
+              const file = new File([blob], `pasted-image-${Date.now()}.png`, { type });
+              imageFiles.push(file);
+            }
           }
         }
+
+        if (imageFiles.length > 0) {
+          const dt = new DataTransfer();
+          for (const file of imageFiles) {
+            dt.items.add(file);
+          }
+          await handleFileSelect(dt.files);
+          return;
+        }
       }
 
-      if (imageFiles.length > 0) {
-        const dt = new DataTransfer();
-        for (const file of imageFiles) {
-          dt.items.add(file);
+      // Fallback: Try to get image data from clipboard using paste event
+      // Create temporary paste handler
+      const pasteHandler = async (e: ClipboardEvent) => {
+        const items = e.clipboardData?.items;
+        if (!items) {
+          alert('No clipboard data available.');
+          return;
         }
-        await handleFileSelect(dt.files);
-      } else {
-        alert('No images found in clipboard. Please copy an image first.');
-      }
+
+        const imageFiles: File[] = [];
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (file) {
+              imageFiles.push(file);
+            }
+          }
+        }
+
+        if (imageFiles.length > 0) {
+          const dt = new DataTransfer();
+          for (const file of imageFiles) {
+            dt.items.add(file);
+          }
+          await handleFileSelect(dt.files);
+        } else {
+          alert('No images found in clipboard. Please copy an image first (Ctrl+C or right-click > Copy Image).');
+        }
+
+        document.removeEventListener('paste', pasteHandler);
+      };
+
+      // Temporarily listen for paste event
+      document.addEventListener('paste', pasteHandler);
+
+      // Trigger paste programmatically
+      document.execCommand('paste');
+
+      // Clean up after 100ms if nothing happened
+      setTimeout(() => {
+        document.removeEventListener('paste', pasteHandler);
+      }, 100);
     } catch (error) {
       console.error('Error reading clipboard:', error);
-      alert('Failed to read from clipboard. Please make sure you have copied an image and granted clipboard permissions.');
+      alert('Failed to read from clipboard. Try copying the image again (Ctrl+C or right-click > Copy Image).');
     }
   };
 
@@ -127,42 +173,38 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
       />
 
       {compact ? (
-        /* Compact Mode: Two buttons side by side */
-        <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
+        /* Compact Mode: Two tiny buttons side by side */
+        <div className="flex gap-1">
+          <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="flex-1 text-xs"
+            className="flex-1 px-2 py-0.5 bg-dark-border hover:bg-dark-primary text-gray-400 hover:text-gray-200 rounded text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             {uploading ? (
               <>
-                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1.5" />
-                Uploading...
+                <div className="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
+                <span className="text-[10px]">Uploading...</span>
               </>
             ) : (
               <>
-                <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-2.5 h-2.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
-                Upload
+                <span className="text-[10px]">Upload</span>
               </>
             )}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
+          </button>
+          <button
             onClick={handlePasteFromClipboard}
             disabled={uploading}
-            className="flex-1 text-xs"
             title="Paste image from clipboard"
+            className="flex-1 px-2 py-0.5 bg-dark-border hover:bg-dark-primary text-gray-400 hover:text-gray-200 rounded text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
-            <svg className="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-2.5 h-2.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
-            Paste
-          </Button>
+            <span className="text-[10px]">Paste</span>
+          </button>
         </div>
       ) : (
         /* Full Mode: Drag & Drop Zone */

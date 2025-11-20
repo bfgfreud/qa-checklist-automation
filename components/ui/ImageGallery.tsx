@@ -49,6 +49,11 @@ export function ImageGallery({ attachments, onDelete, readonly = false, compact 
     );
   }
 
+  // In compact mode, show max 3 thumbnails, then "+N" indicator
+  const maxVisibleInCompact = 3;
+  const visibleAttachments = compact ? attachments.slice(0, maxVisibleInCompact) : attachments;
+  const hiddenCount = compact ? Math.max(0, attachments.length - maxVisibleInCompact) : 0;
+
   return (
     <>
       {/* Thumbnail Grid */}
@@ -56,7 +61,7 @@ export function ImageGallery({ attachments, onDelete, readonly = false, compact 
         ? "flex flex-wrap gap-1.5"
         : "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"
       }>
-        {attachments.map((attachment) => (
+        {visibleAttachments.map((attachment) => (
           <div
             key={attachment.id}
             className={`relative group bg-dark-bg rounded overflow-hidden border border-dark-border hover:border-primary-500 transition-colors ${
@@ -122,6 +127,21 @@ export function ImageGallery({ attachments, onDelete, readonly = false, compact 
             )}
           </div>
         ))}
+
+        {/* "+N more" indicator in compact mode */}
+        {compact && hiddenCount > 0 && (
+          <div
+            className="w-16 h-16 bg-dark-bg rounded overflow-hidden border border-dark-border flex items-center justify-center cursor-pointer hover:border-primary-500 transition-colors"
+            onClick={() => {
+              // Open lightbox with the first hidden image
+              if (attachments[maxVisibleInCompact]) {
+                setSelectedImage(attachments[maxVisibleInCompact]);
+              }
+            }}
+          >
+            <span className="text-xs font-semibold text-gray-400">+{hiddenCount}</span>
+          </div>
+        )}
       </div>
 
       {/* Lightbox Modal */}
