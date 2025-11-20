@@ -977,6 +977,7 @@ export default function ProjectEditPage() {
       }
 
       // Add new modules (both library and custom)
+      let customTestcasesSaved = 0;
       for (const mod of modulesToAdd) {
         if (mod._isCustom) {
           // CUSTOM MODULE: Create with no library reference
@@ -1027,6 +1028,7 @@ export default function ProjectEditPage() {
               console.error(`Failed to add custom testcase "${testcase.testcaseTitle}":`, errorResult);
               // Continue with other testcases even if one fails
             } else {
+              customTestcasesSaved++;
               console.log(`[SAVE DEBUG] Saved testcase: "${testcase.testcaseTitle}"`);
             }
           }
@@ -1056,6 +1058,37 @@ export default function ProjectEditPage() {
           const newModuleId = result.data?.id;
 
           if (newModuleId) {
+            // Save custom testcases added to this library module during draft mode
+            const customTestcases = (mod.testResults || []).filter(
+              (tr) => tr.testcaseId?.startsWith('custom-tc-') || tr.testcaseId?.startsWith('draft-custom-tc-')
+            );
+
+            if (customTestcases.length > 0) {
+              console.log(`[SAVE DEBUG] Saving ${customTestcases.length} custom testcases for library module "${mod.moduleName}"`);
+
+              for (const testcase of customTestcases) {
+                const tcResponse = await fetch(`/api/checklists/modules/${newModuleId}/testcases`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    testerIds,
+                    testcaseTitle: testcase.testcaseTitle,
+                    testcaseDescription: testcase.testcaseDescription,
+                    testcasePriority: testcase.testcasePriority,
+                  }),
+                });
+
+                if (!tcResponse.ok) {
+                  const errorResult = await tcResponse.json();
+                  console.error(`Failed to add custom testcase "${testcase.testcaseTitle}":`, errorResult);
+                  // Continue with other testcases even if one fails
+                } else {
+                  customTestcasesSaved++;
+                  console.log(`[SAVE DEBUG] Saved custom testcase: "${testcase.testcaseTitle}"`);
+                }
+              }
+            }
+
             // Set initial testcase order for the newly added library module
             const tempModule = { ...mod, id: newModuleId };
             await reorderModuleTestcases(tempModule as DraftModule, undefined);
@@ -1064,7 +1097,6 @@ export default function ProjectEditPage() {
       }
 
       // Save custom testcases added to existing modules
-      let customTestcasesSaved = 0;
       const modulesNeedingReorder: DraftModule[] = [];
       for (const { module, newTestcases } of modulesWithNewCustomTestcases) {
         let savedCount = 0;
