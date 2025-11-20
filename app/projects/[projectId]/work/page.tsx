@@ -853,9 +853,9 @@ export default function WorkingModePage() {
                       if (statusFilter !== 'All') {
                         // In single-tester view, filter by current tester's status
                         // In multi-tester view, filter by overall status
-                        if (viewMode === 'own' && currentTester) {
-                          const currentTesterResult = testCase.results.find(r => r.tester.id === currentTester.id);
-                          if (!currentTesterResult || currentTesterResult.status !== statusFilter) {
+                        if (viewMode === 'single' && selectedTester) {
+                          const selectedTesterResult = testCase.results.find(r => r.tester.id === selectedTester.id);
+                          if (!selectedTesterResult || selectedTesterResult.status !== statusFilter) {
                             return false;
                           }
                         } else {
