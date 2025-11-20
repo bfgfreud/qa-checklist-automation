@@ -881,17 +881,23 @@ export default function WorkingModePage() {
                       return viewMode === 'all' || result.tester.id === selectedTester?.id;
                     });
 
-                    return (
-                      <div key={testCaseId} className="py-0.5 px-4">
-                        {filteredResults.map((result) => {
-                          const expandKey = `${testCaseId}-${result.tester.id}`;
-                          const isExpanded = expandedTests.has(expandKey);
-                          const isOwnResult = currentTester && result.tester.id === currentTester.id;
+                    // Separate own result from others
+                    const ownResult = filteredResults.find(r => currentTester && r.tester.id === currentTester.id);
+                    const otherResults = filteredResults.filter(r => !currentTester || r.tester.id !== currentTester.id);
 
-                          return (
-                            <div key={result.id} className="py-0.5">
-                              {/* COLLAPSED ROW: Status circle + Title | Description + Expand Arrow */}
-                              <div className="flex items-center gap-2 hover:bg-dark-elevated/50 px-2 py-0.5 rounded transition-colors">
+                    // Render own result
+                    const renderOwnResult = () => {
+                      if (!ownResult) return null;
+
+                      const result = ownResult;
+                      const expandKey = `${testCaseId}-${result.tester.id}`;
+                      const isExpanded = expandedTests.has(expandKey);
+                      const isOwnResult = true;
+
+                      return (
+                        <div key={result.id} className="py-0.5">
+                          {/* COLLAPSED ROW: Status circle + Title | Description + Expand Arrow */}
+                          <div className="flex items-center gap-2 hover:bg-dark-elevated/50 px-2 py-0.5 rounded transition-colors">
                                 {/* Status Circle */}
                                 <div
                                   className={`w-3 h-3 rounded-full flex-shrink-0 ${
@@ -1308,7 +1314,115 @@ export default function WorkingModePage() {
                               )}
                             </div>
                           );
-                        })}
+                        };
+
+                    return (
+                      <div key={testCaseId} className="py-0.5 px-4">
+                        {/* OWN RESULT - Full UI */}
+                        {renderOwnResult()}
+
+                        {/* OTHER TESTERS - Compact 1-line View */}
+                        {otherResults.length > 0 && (
+                          <div className="ml-6 mt-1 space-y-0.5">
+                            {otherResults.map((result) => {
+                              const notesKey = `${result.id}-notes-popup`;
+                              const imagesKey = `${result.id}-images-popup`;
+
+                              return (
+                                <div key={result.id} className="flex items-center gap-2 px-2 py-0.5 text-xs text-gray-400 hover:bg-dark-elevated/30 rounded">
+                                  {/* Tester Name */}
+                                  <span className="text-gray-300 font-medium">{result.tester.name}</span>
+
+                                  {/* Status Dot */}
+                                  <div
+                                    className={`w-2.5 h-2.5 rounded-full ${
+                                      result.status === 'Pass' ? 'bg-green-500' :
+                                      result.status === 'Fail' ? 'bg-red-500' :
+                                      result.status === 'Skipped' ? 'bg-yellow-500' :
+                                      'bg-gray-500'
+                                    }`}
+                                    title={result.status}
+                                  />
+
+                                  {/* Note Preview (hover to see full) */}
+                                  {result.notes && result.notes.trim() ? (
+                                    <span
+                                      className="truncate flex-1 text-gray-400"
+                                      title={result.notes}
+                                    >
+                                      📝 {result.notes}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-600 italic">No notes</span>
+                                  )}
+
+                                  {/* Image Count (click to open modal) */}
+                                  {result.attachments && result.attachments.length > 0 && (
+                                    <button
+                                      onClick={() => {
+                                        setExpandedReadOnly(prev => {
+                                          const newSet = new Set(prev);
+                                          newSet.add(imagesKey);
+                                          return newSet;
+                                        });
+                                      }}
+                                      className="flex items-center gap-0.5 text-purple-400 hover:text-purple-300"
+                                      title="Click to view images"
+                                    >
+                                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                      </svg>
+                                      <span>({result.attachments.length})</span>
+                                    </button>
+                                  )}
+
+                                  {/* Image Popup Modal */}
+                                  {expandedReadOnly.has(imagesKey) && (
+                                    <div
+                                      className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center"
+                                      onClick={() => {
+                                        setExpandedReadOnly(prev => {
+                                          const newSet = new Set(prev);
+                                          newSet.delete(imagesKey);
+                                          return newSet;
+                                        });
+                                      }}
+                                    >
+                                      <div
+                                        className="bg-dark-secondary rounded-lg p-4 max-w-4xl max-h-[80vh] overflow-auto"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <div className="flex items-center justify-between mb-3">
+                                          <h3 className="text-white font-medium">{result.tester.name}'s Images</h3>
+                                          <button
+                                            onClick={() => {
+                                              setExpandedReadOnly(prev => {
+                                                const newSet = new Set(prev);
+                                                newSet.delete(imagesKey);
+                                                return newSet;
+                                              });
+                                            }}
+                                            className="text-gray-400 hover:text-white"
+                                          >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                          </button>
+                                        </div>
+                                        <ImageGallery
+                                          attachments={result.attachments}
+                                          onDelete={() => {}}
+                                          readonly={true}
+                                          compact={false}
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
