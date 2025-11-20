@@ -1014,9 +1014,11 @@ export default function WorkingModePage() {
 
                                   {/* Column 2: Notes (40% = 5 cols) */}
                                   <div className="col-span-5">
-                                    <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                                      Notes {!isOwnResult && <span className="text-xs text-gray-500">(Read-only)</span>}
-                                    </label>
+                                    <div className="mb-1.5">
+                                      <label className="text-xs font-medium text-gray-400">
+                                        Notes {!isOwnResult && <span className="text-xs text-gray-500">(Read-only)</span>}
+                                      </label>
+                                    </div>
                                     <textarea
                                       value={result.notes || ''}
                                       onChange={(e) => {
