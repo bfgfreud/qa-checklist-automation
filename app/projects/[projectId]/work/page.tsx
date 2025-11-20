@@ -855,6 +855,18 @@ export default function WorkingModePage() {
                         // In multi-tester view, filter by overall status
                         if (viewMode === 'single' && selectedTester) {
                           const selectedTesterResult = testCase.results.find(r => r.tester.id === selectedTester.id);
+                          console.log('[STATUS FILTER]', {
+                            testCase: testCase.testCase.title,
+                            viewMode,
+                            selectedTester: selectedTester?.name,
+                            selectedTesterId: selectedTester?.id,
+                            statusFilter,
+                            foundResult: selectedTesterResult ? {
+                              tester: selectedTesterResult.tester.name,
+                              status: selectedTesterResult.status
+                            } : 'NOT FOUND',
+                            shouldShow: selectedTesterResult && selectedTesterResult.status === statusFilter
+                          });
                           if (!selectedTesterResult || selectedTesterResult.status !== statusFilter) {
                             return false;
                           }
