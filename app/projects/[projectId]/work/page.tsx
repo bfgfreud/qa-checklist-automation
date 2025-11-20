@@ -1049,7 +1049,7 @@ export default function WorkingModePage() {
                                       }}
                                       readOnly={!isOwnResult}
                                       placeholder={isOwnResult ? "Add notes..." : ""}
-                                      className={`w-full bg-dark-bg border border-dark-border text-white rounded px-2 py-1.5 text-xs resize-none transition-all ${
+                                      className={`w-full bg-dark-bg border border-dark-border text-white rounded px-2 py-1 text-xs resize-none transition-all ${
                                         isOwnResult
                                           ? 'focus:outline-none focus:ring-1 focus:ring-primary-500'
                                           : 'opacity-60 cursor-not-allowed'
@@ -1165,7 +1165,7 @@ export default function WorkingModePage() {
 
                                         {/* Expanded View - Show Thumbnails */}
                                         {expandedAttachments.has(result.id) && (
-                                          <div className="border-2 border-primary-500 rounded p-1.5 bg-primary-500/5">
+                                          <div className="border-2 border-primary-500 rounded p-1 bg-primary-500/5">
                                             <div className="flex items-center justify-between mb-1">
                                               <span className="text-xs font-medium text-gray-400">Image Attachments</span>
                                               <button
