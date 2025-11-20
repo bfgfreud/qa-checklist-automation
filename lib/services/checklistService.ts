@@ -381,7 +381,8 @@ export const checklistService = {
         const testResultInserts = []
 
         for (const tester of assignedTesters) {
-          for (const tc of testcases) {
+          for (let i = 0; i < testcases.length; i++) {
+            const tc = testcases[i]
             testResultInserts.push({
               project_checklist_module_id: checklistModule.id,
               testcase_id: tc.id, // Optional reference (for library testcases)
@@ -390,7 +391,8 @@ export const checklistService = {
               testcase_priority: tc.priority || 'Medium', // COPIED data
               is_custom: false, // Library testcases
               tester_id: tester.id,
-              status: 'Pending' as const
+              status: 'Pending' as const,
+              display_order: i // Explicit ordering to prevent jumping
             })
           }
         }
@@ -537,6 +539,18 @@ export const checklistService = {
         }
       }
 
+      // Get next display_order for this module
+      const { data: maxOrderData } = await supabase
+        .from('checklist_test_results')
+        .select('display_order')
+        .eq('project_checklist_module_id', input.projectChecklistModuleId)
+        .order('display_order', { ascending: false })
+        .limit(1)
+
+      const nextDisplayOrder = maxOrderData && maxOrderData.length > 0
+        ? maxOrderData[0].display_order + 1
+        : 0
+
       // Create test result entries for each tester with COPIED testcase data
       const testResultInserts = testerIds.map(testerId => ({
         project_checklist_module_id: input.projectChecklistModuleId,
@@ -546,7 +560,8 @@ export const checklistService = {
         testcase_priority: input.testcasePriority || 'Medium', // COPIED data
         is_custom: true, // Custom testcase flag
         tester_id: testerId,
-        status: 'Pending' as const
+        status: 'Pending' as const,
+        display_order: nextDisplayOrder // Explicit ordering to prevent jumping
       }))
 
       const { data: testResults, error: insertError } = await supabase
@@ -826,6 +841,7 @@ export const checklistService = {
           status,
           notes,
           tested_at,
+          display_order,
           created_at,
           updated_at,
           base_testcases (
@@ -843,6 +859,7 @@ export const checklistService = {
           )
         `)
         .in('project_checklist_module_id', (checklistModules || []).map(m => m.id))
+        .order('display_order', { ascending: true })
 
       if (resultsError) {
         console.error('Error fetching test results:', resultsError)
@@ -908,7 +925,7 @@ export const checklistService = {
                   notes: result.notes,
                   testedAt: result.tested_at,
                   attachments: attachmentsByResultId[result.id] || [],
-                  _createdAt: result.created_at // For sorting
+                  _displayOrder: result.display_order // For sorting test cases
                 }
               })
               .sort((a, b) => {
@@ -927,16 +944,16 @@ export const checklistService = {
                 description: testcase?.description,
                 priority: (testcase?.priority || 'Medium') as 'High' | 'Medium' | 'Low'
               },
-              results: testerResults.map(({ _createdAt, ...rest }) => rest), // Remove temp field
+              results: testerResults.map(({ _displayOrder, ...rest }) => rest), // Remove temp field
               overallStatus,
-              _sortKey: firstResult.created_at || testcaseId // For sorting test cases
+              _displayOrder: firstResult.display_order || 0 // For sorting test cases by explicit order
             }
           })
           .sort((a, b) => {
-            // Sort test cases by creation order for stable display
-            return a._sortKey.localeCompare(b._sortKey)
+            // Sort test cases by display_order for stable display
+            return a._displayOrder - b._displayOrder
           })
-          .map(({ _sortKey, ...testCase }) => testCase) // Remove temp sorting field
+          .map(({ _displayOrder, ...testCase }) => testCase) // Remove temp sorting field
 
         return {
           id: module.id,

@@ -329,7 +329,8 @@ export const testerService = {
           checklist_test_results (
             testcase_title,
             testcase_description,
-            testcase_id
+            testcase_id,
+            display_order
           )
         `)
         .eq('project_id', projectId)
@@ -360,6 +361,7 @@ export const testerService = {
               testcase_id: testcase.testcase_id || null,
               testcase_title: testcase.testcase_title,
               testcase_description: testcase.testcase_description || null,
+              display_order: testcase.display_order || 0, // Preserve display order
               status: 'Pending' as const,
               notes: null,
               tested_at: null
