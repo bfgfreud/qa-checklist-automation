@@ -50,6 +50,7 @@ export default function WorkingModePage() {
   const fetchData = async (showLoading = true) => {
     // Save scroll position before fetching
     const scrollY = window.scrollY;
+    const scrollX = window.scrollX;
 
     if (showLoading) setLoading(true);
     try {
@@ -154,11 +155,16 @@ export default function WorkingModePage() {
     } finally {
       if (showLoading) setLoading(false);
 
-      // Restore scroll position after re-render (next tick)
-      if (!showLoading && scrollY > 0) {
-        requestAnimationFrame(() => {
-          window.scrollTo(0, scrollY);
-        });
+      // Restore scroll position after re-render
+      // Use setTimeout to ensure React has finished rendering the DOM
+      if (!showLoading && (scrollY > 0 || scrollX > 0)) {
+        setTimeout(() => {
+          window.scrollTo({
+            top: scrollY,
+            left: scrollX,
+            behavior: 'instant' // Instant scroll, no smooth animation
+          });
+        }, 0);
       }
     }
   };
