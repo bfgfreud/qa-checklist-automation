@@ -1147,7 +1147,7 @@ export default function WorkingModePage() {
                                               e.currentTarget.style.borderColor = '';
                                               e.currentTarget.style.backgroundColor = '';
                                             }}
-                                            className="border-2 border-dashed border-dark-border rounded px-2 py-1 cursor-pointer transition-colors hover:border-primary-500/50 text-xs text-gray-500"
+                                            className="border border-dashed border-dark-border rounded px-2 py-1 cursor-pointer transition-colors hover:border-primary-500/50 text-xs text-gray-500"
                                             title="Click to expand or press Ctrl+V to paste"
                                             spellCheck="false"
                                           >
