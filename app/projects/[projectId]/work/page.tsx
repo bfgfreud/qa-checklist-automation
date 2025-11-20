@@ -35,6 +35,22 @@ export default function WorkingModePage() {
   // Expanded read-only notes/attachments for other testers - Format: `${resultId}-notes` or `${resultId}-attachments`
   const [expandedReadOnly, setExpandedReadOnly] = useState<Set<string>>(new Set());
 
+  // Helper function to generate consistent color for tester (same as overview page)
+  const getTesterColor = (testerId: string) => {
+    const colors = [
+      'bg-blue-500/20 text-blue-400 border-blue-500/30',
+      'bg-green-500/20 text-green-400 border-green-500/30',
+      'bg-purple-500/20 text-purple-400 border-purple-500/30',
+      'bg-orange-500/20 text-orange-400 border-orange-500/30',
+      'bg-pink-500/20 text-pink-400 border-pink-500/30',
+      'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
+      'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+    ];
+    // Generate consistent color based on tester ID
+    const hash = testerId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+  };
+
   // Collapsed modules - stores module IDs that are collapsed
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
 
@@ -1323,19 +1339,22 @@ export default function WorkingModePage() {
 
                         {/* OTHER TESTERS - Compact 1-line View */}
                         {otherResults.length > 0 && (
-                          <div className="ml-6 mt-1 space-y-0.5">
+                          <div className="ml-6 mt-1 mb-3 space-y-0.5">
                             {otherResults.map((result) => {
-                              const notesKey = `${result.id}-notes-popup`;
+                              const notesKey = `${result.id}-notes-expanded`;
                               const imagesKey = `${result.id}-images-popup`;
+                              const notesExpanded = expandedReadOnly.has(notesKey);
 
                               return (
-                                <div key={result.id} className="flex items-center gap-2 px-2 py-0.5 text-xs text-gray-400 hover:bg-dark-elevated/30 rounded">
-                                  {/* Tester Name */}
-                                  <span className="text-gray-300 font-medium">{result.tester.name}</span>
+                                <div key={result.id} className="flex items-center gap-2 px-2 py-0.5 text-xs hover:bg-dark-elevated/30 rounded">
+                                  {/* Tester Name - Colored Badge */}
+                                  <span className={`px-1.5 py-0.5 rounded border font-medium text-xs ${getTesterColor(result.tester.id)}`}>
+                                    {result.tester.name}
+                                  </span>
 
                                   {/* Status Dot */}
                                   <div
-                                    className={`w-2.5 h-2.5 rounded-full ${
+                                    className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
                                       result.status === 'Pass' ? 'bg-green-500' :
                                       result.status === 'Fail' ? 'bg-red-500' :
                                       result.status === 'Skipped' ? 'bg-yellow-500' :
@@ -1344,37 +1363,68 @@ export default function WorkingModePage() {
                                     title={result.status}
                                   />
 
-                                  {/* Note Preview (hover to see full) */}
-                                  {result.notes && result.notes.trim() ? (
-                                    <span
-                                      className="truncate flex-1 text-gray-400"
-                                      title={result.notes}
-                                    >
-                                      📝 {result.notes}
-                                    </span>
-                                  ) : (
-                                    <span className="text-gray-600 italic">No notes</span>
-                                  )}
+                                  {/* Note Preview/Expanded - Takes remaining space */}
+                                  <div className="flex-1 min-w-0">
+                                    {result.notes && result.notes.trim() ? (
+                                      !notesExpanded ? (
+                                        /* Collapsed - 1 line with truncate */
+                                        <div
+                                          onClick={() => {
+                                            setExpandedReadOnly(prev => {
+                                              const newSet = new Set(prev);
+                                              newSet.add(notesKey);
+                                              return newSet;
+                                            });
+                                          }}
+                                          className="truncate text-gray-400 cursor-pointer hover:text-gray-300"
+                                          title="Click to expand notes"
+                                        >
+                                          📝 {result.notes}
+                                        </div>
+                                      ) : (
+                                        /* Expanded - Full text with line breaks */
+                                        <div
+                                          onClick={() => {
+                                            setExpandedReadOnly(prev => {
+                                              const newSet = new Set(prev);
+                                              newSet.delete(notesKey);
+                                              return newSet;
+                                            });
+                                          }}
+                                          className="text-gray-400 cursor-pointer hover:text-gray-300 whitespace-pre-wrap"
+                                          title="Click to collapse notes"
+                                        >
+                                          📝 {result.notes}
+                                        </div>
+                                      )
+                                    ) : (
+                                      <span className="text-gray-600 italic">No notes</span>
+                                    )}
+                                  </div>
 
-                                  {/* Image Count (click to open modal) */}
-                                  {result.attachments && result.attachments.length > 0 && (
-                                    <button
-                                      onClick={() => {
-                                        setExpandedReadOnly(prev => {
-                                          const newSet = new Set(prev);
-                                          newSet.add(imagesKey);
-                                          return newSet;
-                                        });
-                                      }}
-                                      className="flex items-center gap-0.5 text-purple-400 hover:text-purple-300"
-                                      title="Click to view images"
-                                    >
-                                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                                      </svg>
-                                      <span>({result.attachments.length})</span>
-                                    </button>
-                                  )}
+                                  {/* Image Count - Fixed position at the end */}
+                                  <div className="flex-shrink-0">
+                                    {result.attachments && result.attachments.length > 0 ? (
+                                      <button
+                                        onClick={() => {
+                                          setExpandedReadOnly(prev => {
+                                            const newSet = new Set(prev);
+                                            newSet.add(imagesKey);
+                                            return newSet;
+                                          });
+                                        }}
+                                        className="flex items-center gap-0.5 text-purple-400 hover:text-purple-300"
+                                        title="Click to view images"
+                                      >
+                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                        </svg>
+                                        <span>({result.attachments.length})</span>
+                                      </button>
+                                    ) : (
+                                      <span className="text-gray-600 text-xs">No images</span>
+                                    )}
+                                  </div>
 
                                   {/* Image Popup Modal */}
                                   {expandedReadOnly.has(imagesKey) && (
