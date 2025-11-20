@@ -2,6 +2,23 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Project } from '@/types/project';
 import { Module, Priority, TestCase } from '@/types/module';
 import { ChecklistModuleWithResults } from '@/types/checklist';
@@ -16,6 +33,251 @@ type DraftModule = ChecklistModuleWithResults & {
   _isCustom?: boolean; // Marks module as custom (not from library)
   _removedTestcaseIds?: Set<string>; // Track removed testcases
 };
+
+// Sortable Module Component
+function SortableModule({
+  module,
+  isExpanded,
+  isDraft,
+  onToggleExpansion,
+  onCopyModule,
+  onRemoveModule,
+  onOpenAddTestCaseDialog,
+  onRemoveTestcase,
+  children,
+}: {
+  module: DraftModule;
+  isExpanded: boolean;
+  isDraft: boolean;
+  onToggleExpansion: (id: string) => void;
+  onCopyModule: (module: DraftModule) => void;
+  onRemoveModule: (id: string) => void;
+  onOpenAddTestCaseDialog: (module: DraftModule) => void;
+  onRemoveTestcase: (moduleId: string, testcaseId: string) => void;
+  children?: React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: module.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`bg-dark-secondary border rounded-lg overflow-hidden ${
+        isDraft ? 'border-yellow-500/50' : 'border-dark-border'
+      }`}
+    >
+      {/* Module Header */}
+      <div className="flex items-center justify-between p-4 bg-dark-elevated">
+        {/* Drag Handle */}
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-2 text-gray-400 hover:text-gray-300 hover:bg-dark-border rounded transition-colors"
+          title="Drag to reorder"
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+          </svg>
+        </button>
+
+        <button
+          onClick={() => onToggleExpansion(module.id)}
+          className="flex-1 flex items-center gap-3 text-left"
+        >
+          <svg
+            className={`w-5 h-5 text-gray-400 transition-transform ${
+              isExpanded ? 'rotate-90' : ''
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+          <div>
+            <h3 className="font-semibold text-white flex items-center gap-2">
+              <span>
+                {module.moduleName}
+                {module.instanceLabel && module.instanceLabel !== module.moduleName && (
+                  <span className="ml-2 text-sm text-primary-500">
+                    ({module.instanceLabel})
+                  </span>
+                )}
+              </span>
+              {isDraft && (
+                <span className="px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-400 rounded">
+                  Unsaved
+                </span>
+              )}
+            </h3>
+            {module.moduleDescription && (
+              <p className="text-sm text-gray-400 mt-0.5">
+                {module.moduleDescription}
+              </p>
+            )}
+          </div>
+        </button>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-400">
+            {module.testResults?.length || 0} tests
+          </span>
+          <button
+            onClick={() => onCopyModule(module)}
+            className="p-2 text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
+            title="Copy module"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => onRemoveModule(module.id)}
+            className="p-2 text-red-400 hover:bg-red-500/10 rounded transition-colors"
+            title="Remove module"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Test Cases List */}
+      {isExpanded && (
+        <div className="p-4 space-y-2">
+          {/* Add Test Case Button */}
+          <button
+            onClick={() => onOpenAddTestCaseDialog(module)}
+            className="w-full p-3 border-2 border-dashed border-primary-500/30 rounded-lg bg-primary-500/5 hover:bg-primary-500/10 hover:border-primary-500/50 transition-colors flex items-center justify-center gap-2 text-primary-400 text-sm font-semibold"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Test Case
+          </button>
+
+          {/* Test Case List - Make sortable */}
+          {module.testResults && module.testResults.length > 0 && (
+            <SortableContext
+              items={module.testResults.map(tr => tr.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {module.testResults.map((testResult) => (
+                <SortableTestCase
+                  key={testResult.id}
+                  testResult={testResult}
+                  moduleId={module.id}
+                  onRemoveTestcase={onRemoveTestcase}
+                />
+              ))}
+            </SortableContext>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Sortable Test Case Component
+function SortableTestCase({
+  testResult,
+  moduleId,
+  onRemoveTestcase,
+}: {
+  testResult: any;
+  moduleId: string;
+  onRemoveTestcase: (moduleId: string, testcaseId: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: testResult.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-3 p-3 bg-dark-elevated rounded hover:bg-dark-border transition-colors group"
+    >
+      {/* Drag Handle */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing p-1 text-gray-500 hover:text-gray-400 transition-colors"
+        title="Drag to reorder"
+      >
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+        </svg>
+      </button>
+
+      <div className="flex-1">
+        <div className="text-sm text-white">
+          {testResult.testcaseTitle}
+        </div>
+        {testResult.testcaseDescription && (
+          <div className="text-xs text-gray-500 mt-0.5">
+            {testResult.testcaseDescription}
+          </div>
+        )}
+      </div>
+      <span
+        className={`text-xs px-2 py-0.5 rounded ${
+          testResult.testcasePriority === 'High'
+            ? 'bg-red-500/20 text-red-400'
+            : testResult.testcasePriority === 'Medium'
+            ? 'bg-yellow-500/20 text-yellow-400'
+            : 'bg-gray-500/20 text-gray-400'
+        }`}
+      >
+        {testResult.testcasePriority}
+      </span>
+      <button
+        onClick={() => onRemoveTestcase(moduleId, testResult.testcaseId)}
+        className="p-1.5 text-red-400 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100"
+        title="Remove test case"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}
 
 export default function ProjectEditPage() {
   const params = useParams();
@@ -46,6 +308,55 @@ export default function ProjectEditPage() {
 
   // Track if there are unsaved changes
   const hasUnsavedChanges = JSON.stringify(draftModules) !== JSON.stringify(originalModules);
+
+  // Drag-and-drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle drag-and-drop for modules and testcases
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    // Check if we're dragging modules or test results
+    const activeModule = draftModules.find((m) => m.id === active.id);
+
+    if (activeModule) {
+      // Dragging modules
+      const oldIndex = draftModules.findIndex((m) => m.id === active.id);
+      const newIndex = draftModules.findIndex((m) => m.id === over.id);
+
+      const reorderedModules = arrayMove(draftModules, oldIndex, newIndex).map((m, idx) => ({
+        ...m,
+        orderIndex: idx,
+      }));
+
+      setDraftModules(reorderedModules);
+    } else {
+      // Dragging testcases - find which module contains them
+      setDraftModules((prevModules) =>
+        prevModules.map((module) => {
+          const testResult = module.testResults.find((tr) => tr.id === active.id);
+          if (testResult) {
+            const oldIndex = module.testResults.findIndex((tr) => tr.id === active.id);
+            const newIndex = module.testResults.findIndex((tr) => tr.id === over.id);
+
+            const reorderedTestResults = arrayMove(module.testResults, oldIndex, newIndex);
+
+            return { ...module, testResults: reorderedTestResults };
+          }
+          return module;
+        })
+      );
+    }
+  };
 
   // Load data (parallel fetching for better performance)
   useEffect(() => {
@@ -670,6 +981,79 @@ export default function ProjectEditPage() {
         }
       }
 
+      // Reorder modules if needed (compare orderIndex changes)
+      const modulesNeedReordering = draftModules.some((dm, idx) => {
+        const original = originalModules.find(om => om.id === dm.id);
+        return original && original.orderIndex !== idx;
+      });
+
+      if (modulesNeedReordering) {
+        console.log('[SAVE DEBUG] Module order changed, saving reorder...');
+        const reorderPayload = {
+          modules: draftModules
+            .filter(m => !m._isDraft && !m._isDeleted) // Only existing modules
+            .map((m, idx) => ({ id: m.id, orderIndex: idx }))
+        };
+
+        const reorderRes = await fetch(`/api/projects/${projectId}/checklist/reorder`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reorderPayload),
+        });
+
+        if (!reorderRes.ok) {
+          console.error('Failed to reorder modules');
+        }
+      }
+
+      // Reorder testcases if needed (within each module)
+      for (const draftModule of draftModules) {
+        if (draftModule._isDraft || draftModule._isDeleted) continue; // Skip new/deleted modules
+
+        const originalModule = originalModules.find(om => om.id === draftModule.id);
+        if (!originalModule) continue;
+
+        // Check if testcase order changed
+        const testcasesNeedReordering = draftModule.testResults.some((tr, idx) => {
+          const originalTr = originalModule.testResults.find(otr => otr.testcaseId === tr.testcaseId);
+          if (!originalTr) return false;
+          const originalIdx = originalModule.testResults.findIndex(otr => otr.testcaseId === tr.testcaseId);
+          return originalIdx !== idx;
+        });
+
+        if (testcasesNeedReordering) {
+          console.log(`[SAVE DEBUG] Testcase order changed in module "${draftModule.moduleName}", saving reorder...`);
+
+          // Group testcases by testcaseId and assign display_order
+          const testcaseOrderMap = new Map<string, number>();
+          draftModule.testResults.forEach((tr, idx) => {
+            if (tr.testcaseId && !testcaseOrderMap.has(tr.testcaseId)) {
+              testcaseOrderMap.set(tr.testcaseId, idx);
+            }
+          });
+
+          const reorderPayload = {
+            testcases: Array.from(testcaseOrderMap.entries()).map(([testcaseId, displayOrder]) => ({
+              testcaseId,
+              displayOrder
+            }))
+          };
+
+          const reorderRes = await fetch(
+            `/api/projects/${projectId}/checklist/modules/${draftModule.id}/testcases/reorder`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(reorderPayload),
+            }
+          );
+
+          if (!reorderRes.ok) {
+            console.error(`Failed to reorder testcases in module "${draftModule.moduleName}"`);
+          }
+        }
+      }
+
       // Refresh checklist from server to get real IDs and data
       const checklistRes = await fetch(`/api/checklists/${projectId}`, {
         cache: 'no-store',
@@ -943,157 +1327,39 @@ export default function ProjectEditPage() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {draftModules
-                  .filter((m) => !m._isDeleted)
-                  .map((module) => {
-                    const isExpanded = expandedModules.has(module.id);
-                    const isDraft = module._isDraft;
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={draftModules.filter(m => !m._isDeleted).map(m => m.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-4">
+                    {draftModules
+                      .filter((m) => !m._isDeleted)
+                      .map((module) => {
+                        const isExpanded = expandedModules.has(module.id);
+                        const isDraft = module._isDraft;
 
-                    return (
-                      <div
-                        key={module.id}
-                        className={`bg-dark-secondary border rounded-lg overflow-hidden ${
-                          isDraft ? 'border-yellow-500/50' : 'border-dark-border'
-                        }`}
-                      >
-                        {/* Module Header */}
-                        <div className="flex items-center justify-between p-4 bg-dark-elevated">
-                        <button
-                          onClick={() => toggleModuleExpansion(module.id)}
-                          className="flex-1 flex items-center gap-3 text-left"
-                        >
-                          <svg
-                            className={`w-5 h-5 text-gray-400 transition-transform ${
-                              isExpanded ? 'rotate-90' : ''
-                            }`}
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 5l7 7-7 7"
-                            />
-                          </svg>
-                          <div>
-                            <h3 className="font-semibold text-white flex items-center gap-2">
-                              <span>
-                                {module.moduleName}
-                                {module.instanceLabel && module.instanceLabel !== module.moduleName && (
-                                  <span className="ml-2 text-sm text-primary-500">
-                                    ({module.instanceLabel})
-                                  </span>
-                                )}
-                              </span>
-                              {isDraft && (
-                                <span className="px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-400 rounded">
-                                  Unsaved
-                                </span>
-                              )}
-                            </h3>
-                            {module.moduleDescription && (
-                              <p className="text-sm text-gray-400 mt-0.5">
-                                {module.moduleDescription}
-                              </p>
-                            )}
-                          </div>
-                        </button>
-
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-400">
-                            {module.testResults?.length || 0} tests
-                          </span>
-                          <button
-                            onClick={() => handleCopyModule(module)}
-                            className="p-2 text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
-                            title="Copy module"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => handleRemoveModule(module.id)}
-                            className="p-2 text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                            title="Remove module"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Test Cases List */}
-                      {isExpanded && (
-                        <div className="p-4 space-y-2">
-                          {/* Add Test Case Button */}
-                          <button
-                            onClick={() => handleOpenAddTestCaseDialog(module)}
-                            className="w-full p-3 border-2 border-dashed border-primary-500/30 rounded-lg bg-primary-500/5 hover:bg-primary-500/10 hover:border-primary-500/50 transition-colors flex items-center justify-center gap-2 text-primary-400 text-sm font-semibold"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                            Add Test Case
-                          </button>
-
-                          {/* Test Case List */}
-                          {module.testResults && module.testResults.length > 0 && (
-                            <>
-                              {module.testResults.map((testResult) => (
-                                <div
-                                  key={testResult.id}
-                                  className="flex items-center gap-3 p-3 bg-dark-elevated rounded hover:bg-dark-border transition-colors group"
-                                >
-                                  <div className="flex-1">
-                                    <div className="text-sm text-white">
-                                      {testResult.testcaseTitle}
-                                    </div>
-                                    {testResult.testcaseDescription && (
-                                      <div className="text-xs text-gray-500 mt-0.5">
-                                        {testResult.testcaseDescription}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <span
-                                    className={`text-xs px-2 py-0.5 rounded ${
-                                      testResult.testcasePriority === 'High'
-                                        ? 'bg-red-500/20 text-red-400'
-                                        : testResult.testcasePriority === 'Medium'
-                                        ? 'bg-yellow-500/20 text-yellow-400'
-                                        : 'bg-gray-500/20 text-gray-400'
-                                    }`}
-                                  >
-                                    {testResult.testcasePriority}
-                                  </span>
-                                  <button
-                                    onClick={() => handleRemoveTestcase(module.id, testResult.testcaseId)}
-                                    className="p-1.5 text-red-400 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100"
-                                    title="Remove test case"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                  </button>
-                                </div>
-                              ))}
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                        return (
+                          <SortableModule
+                            key={module.id}
+                            module={module}
+                            isExpanded={isExpanded}
+                            isDraft={!!isDraft}
+                            onToggleExpansion={toggleModuleExpansion}
+                            onCopyModule={handleCopyModule}
+                            onRemoveModule={handleRemoveModule}
+                            onOpenAddTestCaseDialog={handleOpenAddTestCaseDialog}
+                            onRemoveTestcase={handleRemoveTestcase}
+                          />
+                        );
+                      })}
+                  </div>
+                </SortableContext>
+              </DndContext>
             )}
           </div>
         </div>

@@ -994,7 +994,10 @@ export const checklistService = {
                 description: testcase?.description,
                 priority: (testcase?.priority || 'Medium') as 'High' | 'Medium' | 'Low'
               },
-              results: testerResults.map(({ _displayOrder, ...rest }) => rest), // Remove temp field
+              results: testerResults.map((r: any) => {
+                const { _displayOrder, ...rest } = r;
+                return rest;
+              }), // Remove temp field
               overallStatus,
               _displayOrder: firstResult.display_order || 0 // For sorting test cases by explicit order
             }
