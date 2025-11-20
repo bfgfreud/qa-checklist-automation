@@ -1393,7 +1393,7 @@ export default function WorkingModePage() {
                                         onClick={(e) => e.stopPropagation()}
                                       >
                                         <div className="flex items-center justify-between mb-3">
-                                          <h3 className="text-white font-medium">{result.tester.name}'s Images</h3>
+                                          <h3 className="text-white font-medium">{result.tester.name}&apos;s Images</h3>
                                           <button
                                             onClick={() => {
                                               setExpandedReadOnly(prev => {
