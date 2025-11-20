@@ -147,72 +147,70 @@ export function ImageGallery({ attachments, onDelete, readonly = false, compact 
       {/* Lightbox Modal */}
       {selectedImage && (
         <div
-          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black z-50 flex items-center justify-center"
           onClick={() => setSelectedImage(null)}
         >
-          <div className="relative max-w-7xl max-h-full">
-            {/* Close Button */}
-            <button
-              onClick={() => setSelectedImage(null)}
-              className="absolute top-4 right-4 p-2 bg-dark-secondary text-white rounded-lg hover:bg-dark-primary transition-colors z-10"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            {/* Image Info - Top Left */}
-            <div className="absolute top-4 left-4 bg-dark-secondary/90 text-white p-3 rounded-lg max-w-sm">
-              <div className="font-semibold text-sm">{selectedImage.file_name}</div>
-              <div className="text-xs text-gray-400 mt-1">
-                {selectedImage.file_size ? `${(selectedImage.file_size / 1024).toFixed(1)} KB • ` : ''}
-                {new Date(selectedImage.uploaded_at).toLocaleString()}
-              </div>
+          {/* Image Info - Top Left (Fixed Position) */}
+          <div className="fixed top-4 left-4 bg-dark-secondary/90 text-white p-3 rounded-lg max-w-sm z-20">
+            <div className="font-semibold text-sm">{selectedImage.file_name}</div>
+            <div className="text-xs text-gray-400 mt-1">
+              {selectedImage.file_size ? `${(selectedImage.file_size / 1024).toFixed(1)} KB • ` : ''}
+              {new Date(selectedImage.uploaded_at).toLocaleString()}
             </div>
-
-            {/* Image */}
-            <img
-              src={selectedImage.file_url}
-              alt={selectedImage.file_name}
-              className="max-w-full max-h-[90vh] object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-
-            {/* Navigation */}
-            {attachments.length > 1 && (
-              <>
-                {/* Previous */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const currentIndex = attachments.findIndex((a) => a.id === selectedImage.id);
-                    const prevIndex = currentIndex > 0 ? currentIndex - 1 : attachments.length - 1;
-                    setSelectedImage(attachments[prevIndex]);
-                  }}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-dark-secondary text-white rounded-lg hover:bg-dark-primary transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-
-                {/* Next */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const currentIndex = attachments.findIndex((a) => a.id === selectedImage.id);
-                    const nextIndex = currentIndex < attachments.length - 1 ? currentIndex + 1 : 0;
-                    setSelectedImage(attachments[nextIndex]);
-                  }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-dark-secondary text-white rounded-lg hover:bg-dark-primary transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </>
-            )}
           </div>
+
+          {/* Close Button - Top Right (Fixed Position) */}
+          <button
+            onClick={() => setSelectedImage(null)}
+            className="fixed top-4 right-4 p-2 bg-dark-secondary text-white rounded-lg hover:bg-dark-primary transition-colors z-20"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          {/* Image - Centered, Full Size */}
+          <img
+            src={selectedImage.file_url}
+            alt={selectedImage.file_name}
+            className="max-w-[calc(100vw-8rem)] max-h-[calc(100vh-8rem)] object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {/* Navigation - Fixed at Left/Right Middle */}
+          {attachments.length > 1 && (
+            <>
+              {/* Previous - Fixed Left */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const currentIndex = attachments.findIndex((a) => a.id === selectedImage.id);
+                  const prevIndex = currentIndex > 0 ? currentIndex - 1 : attachments.length - 1;
+                  setSelectedImage(attachments[prevIndex]);
+                }}
+                className="fixed left-4 top-1/2 -translate-y-1/2 p-3 bg-dark-secondary/80 text-white rounded-lg hover:bg-dark-primary transition-colors z-20"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+
+              {/* Next - Fixed Right */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const currentIndex = attachments.findIndex((a) => a.id === selectedImage.id);
+                  const nextIndex = currentIndex < attachments.length - 1 ? currentIndex + 1 : 0;
+                  setSelectedImage(attachments[nextIndex]);
+                }}
+                className="fixed right-4 top-1/2 -translate-y-1/2 p-3 bg-dark-secondary/80 text-white rounded-lg hover:bg-dark-primary transition-colors z-20"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </>
+          )}
         </div>
       )}
     </>

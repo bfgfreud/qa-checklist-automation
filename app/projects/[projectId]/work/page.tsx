@@ -36,6 +36,9 @@ export default function WorkingModePage() {
   // Status filter for testcases
   const [statusFilter, setStatusFilter] = useState<TestStatus | 'All'>('All');
 
+  // Search query for testcases
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Polling interval (5 seconds)
   const [isPolling, setIsPolling] = useState(true);
 
@@ -285,6 +288,24 @@ export default function WorkingModePage() {
       passedTests.forEach(key => newSet.delete(key));
       return newSet;
     });
+  };
+
+  const expandAllTests = () => {
+    if (!checklist) return;
+    const allTests = new Set<string>();
+    checklist.modules.forEach(module => {
+      module.testCases.forEach(testCase => {
+        testCase.results.forEach(result => {
+          const expandKey = `${testCase.testCase.id}-${result.tester.id}`;
+          allTests.add(expandKey);
+        });
+      });
+    });
+    setExpandedTests(allTests);
+  };
+
+  const collapseAllTests = () => {
+    setExpandedTests(new Set());
   };
 
   // Debounced notes update
@@ -643,6 +664,31 @@ export default function WorkingModePage() {
             {/* Quick Action Toolbar */}
             <div className="bg-dark-secondary border border-dark-primary rounded-lg p-3 mb-4">
               <div className="flex items-center gap-3 flex-wrap">
+                {/* Search Bar */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 font-medium">Search:</span>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search testcases..."
+                    className="px-2 py-1 bg-dark-elevated border border-dark-border text-white rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary-500 w-48"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="text-gray-400 hover:text-white"
+                      title="Clear search"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+
+                <span className="text-gray-600">|</span>
+
                 {/* Module Actions */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500 font-medium">Modules:</span>
@@ -665,6 +711,18 @@ export default function WorkingModePage() {
                 {/* Testcase Actions */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500 font-medium">Testcases:</span>
+                  <button
+                    onClick={expandAllTests}
+                    className="px-2 py-1 bg-dark-elevated hover:bg-dark-border text-gray-300 hover:text-white rounded text-xs transition-colors"
+                  >
+                    Expand All
+                  </button>
+                  <button
+                    onClick={collapseAllTests}
+                    className="px-2 py-1 bg-dark-elevated hover:bg-dark-border text-gray-300 hover:text-white rounded text-xs transition-colors"
+                  >
+                    Collapse All
+                  </button>
                   <button
                     onClick={collapsePassedTests}
                     className="px-2 py-1 bg-dark-elevated hover:bg-dark-border text-gray-300 hover:text-white rounded text-xs transition-colors"
@@ -787,8 +845,19 @@ export default function WorkingModePage() {
                   {module.testCases
                     .filter((testCase) => {
                       // Apply status filter
-                      if (statusFilter === 'All') return true;
-                      return testCase.overallStatus === statusFilter;
+                      if (statusFilter !== 'All' && testCase.overallStatus !== statusFilter) {
+                        return false;
+                      }
+
+                      // Apply search filter
+                      if (searchQuery.trim()) {
+                        const query = searchQuery.toLowerCase();
+                        const titleMatch = testCase.testCase.title.toLowerCase().includes(query);
+                        const descMatch = testCase.testCase.description?.toLowerCase().includes(query);
+                        return titleMatch || descMatch;
+                      }
+
+                      return true;
                     })
                     .map((testCase) => {
                     const testCaseId = testCase.testCase.id;
@@ -852,6 +921,29 @@ export default function WorkingModePage() {
                                 }`}>
                                   {testCase.testCase.priority}
                                 </span>
+
+                                {/* Note/Image Indicators */}
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  {/* Note Icon */}
+                                  {result.notes && result.notes.trim() && (
+                                    <div className="text-blue-400" title="Has notes">
+                                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                      </svg>
+                                    </div>
+                                  )}
+                                  {/* Image Icon with Count */}
+                                  {result.attachments && result.attachments.length > 0 && (
+                                    <div className="flex items-center gap-0.5 text-purple-400" title={`${result.attachments.length} image(s)`}>
+                                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                      </svg>
+                                      {result.attachments.length > 1 && (
+                                        <span className="text-xs">+{result.attachments.length - 1}</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
 
                                 {/* Tester name (for multi-tester view) */}
                                 {viewMode === 'all' && (

@@ -85,7 +85,50 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
     }
   };
 
-  // Handle paste event on the hidden paste area
+  // Handle click on paste button - directly read from clipboard
+  const handlePasteButtonClick = async () => {
+    try {
+      // Try modern Clipboard API first
+      if (navigator.clipboard && navigator.clipboard.read) {
+        const clipboardItems = await navigator.clipboard.read();
+        const imageFiles: File[] = [];
+
+        for (const clipboardItem of clipboardItems) {
+          for (const type of clipboardItem.types) {
+            if (type.startsWith('image/')) {
+              const blob = await clipboardItem.getType(type);
+              const file = new File([blob], `pasted-image-${Date.now()}.png`, { type });
+              imageFiles.push(file);
+            }
+          }
+        }
+
+        if (imageFiles.length > 0) {
+          const dt = new DataTransfer();
+          for (const file of imageFiles) {
+            dt.items.add(file);
+          }
+          await handleFileSelect(dt.files);
+        } else {
+          alert('No images found in clipboard. Please copy an image first (Ctrl+C or right-click > Copy Image).');
+        }
+      } else {
+        // Fallback: use contentEditable paste area
+        if (pasteAreaRef.current) {
+          pasteAreaRef.current.focus();
+          // Wait a bit for focus, then execute paste
+          setTimeout(() => {
+            document.execCommand('paste');
+          }, 100);
+        }
+      }
+    } catch (err) {
+      console.error('Clipboard paste error:', err);
+      alert('Unable to access clipboard. Please grant clipboard permissions or use the Upload button instead.');
+    }
+  };
+
+  // Handle paste event on the hidden paste area (fallback)
   const handlePasteEvent = async (e: React.ClipboardEvent<HTMLDivElement>) => {
     e.preventDefault();
     const items = e.clipboardData?.items;
@@ -108,16 +151,6 @@ export function ImageUploader({ testResultId, onUploadComplete, multiple = true,
         dt.items.add(file);
       }
       await handleFileSelect(dt.files);
-    } else {
-      alert('No images found in clipboard. Please copy an image first (Ctrl+C or right-click > Copy Image).');
-    }
-  };
-
-  // Handle click on paste button - focus the hidden paste area
-  const handlePasteButtonClick = () => {
-    if (pasteAreaRef.current) {
-      pasteAreaRef.current.focus();
-      alert('Focused on paste area. Now press Ctrl+V to paste your image.');
     }
   };
 
