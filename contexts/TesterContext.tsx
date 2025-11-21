@@ -2,70 +2,84 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Tester } from '@/types/tester';
+import { createClient } from '@/lib/supabase-browser';
+import { User } from '@supabase/supabase-js';
 
 interface TesterContextType {
   currentTester: Tester | null;
-  setCurrentTesterName: (name: string) => Promise<void>;
+  user: User | null;
   loading: boolean;
+  signOut: () => Promise<void>;
 }
 
 const TesterContext = createContext<TesterContextType | undefined>(undefined);
 
 export function TesterProvider({ children }: { children: ReactNode }) {
   const [currentTester, setCurrentTester] = useState<Tester | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const supabase = createClient();
 
-  // Load tester from localStorage on mount
   useEffect(() => {
-    const loadTester = async () => {
-      const savedName = localStorage.getItem('currentTesterName');
+    // Get initial session
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
 
-      if (savedName) {
-        await findOrCreateTester(savedName);
+      if (session?.user) {
+        setUser(session.user);
+        await findOrCreateTesterFromAuth(session.user);
       }
 
       setLoading(false);
     };
 
-    loadTester();
+    initAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          setUser(session.user);
+          await findOrCreateTesterFromAuth(session.user);
+        } else {
+          setUser(null);
+          setCurrentTester(null);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   /**
-   * Find existing tester by name or create new one
+   * Find or create tester from authenticated user
    */
-  const findOrCreateTester = async (name: string): Promise<Tester | null> => {
+  const findOrCreateTesterFromAuth = async (user: User): Promise<void> => {
     try {
-      // Get all testers
+      // Try to find tester by email
       const response = await fetch('/api/testers');
       const result = await response.json();
 
       if (result.success && result.data) {
-        // Find tester with matching name (case-insensitive)
-        // Exclude Legacy Tester from matching
         const existingTester = result.data.find(
-          (t: Tester) =>
-            t.name.toLowerCase() === name.toLowerCase() &&
-            t.email !== 'legacy@system'
+          (t: Tester) => t.email === user.email
         );
 
         if (existingTester) {
-          // Use existing tester
-          console.log('[TesterContext] Found existing tester:', existingTester.name, existingTester.id);
           setCurrentTester(existingTester);
-          return existingTester;
-        } else {
-          console.log('[TesterContext] No existing tester found for name:', name);
+          return;
         }
       }
 
-      // Create new tester
+      // Create new tester from auth user
       const createResponse = await fetch('/api/testers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name,
-          email: '', // No email for now
-          color: generateRandomColor()
+          name: user.user_metadata.full_name || user.email?.split('@')[0] || 'User',
+          email: user.email || '',
+          color: generateRandomColor(),
+          auth_user_id: user.id, // Link to Supabase auth user
         })
       });
 
@@ -73,36 +87,20 @@ export function TesterProvider({ children }: { children: ReactNode }) {
 
       if (createResult.success && createResult.data) {
         setCurrentTester(createResult.data);
-        return createResult.data;
       }
-
-      return null;
     } catch (error) {
       console.error('Error finding/creating tester:', error);
-      return null;
     }
   };
 
-  /**
-   * Set current tester by name (find or create)
-   */
-  const setCurrentTesterName = async (name: string) => {
-    if (!name.trim()) {
-      // Clear current tester
-      setCurrentTester(null);
-      localStorage.removeItem('currentTesterName');
-      return;
-    }
-
-    const tester = await findOrCreateTester(name.trim());
-
-    if (tester) {
-      localStorage.setItem('currentTesterName', tester.name);
-    }
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setCurrentTester(null);
   };
 
   return (
-    <TesterContext.Provider value={{ currentTester, setCurrentTesterName, loading }}>
+    <TesterContext.Provider value={{ currentTester, user, loading, signOut }}>
       {children}
     </TesterContext.Provider>
   );
