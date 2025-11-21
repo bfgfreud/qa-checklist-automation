@@ -57,7 +57,9 @@
       "Bash(set PORT=3005)",
       "Bash(timeout /t 2)",
       "Bash(rd /s /q \"C:\\Code Stuff\\QA Checklist Automation\\app\\api\\checklists\\modules\\[moduleId]\")",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(npx next lint:*)",
+      "Bash(timeout /t 2 /nobreak)"
     ],
     "deny": [],
     "ask": []

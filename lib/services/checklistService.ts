@@ -276,7 +276,6 @@ export const checklistService = {
         }
 
         testcases = libraryTestcases || []
-        console.log(`[DEBUG] Found ${testcases.length} test cases for library module ${input.moduleId}`)
       }
       // HYBRID MODEL: Handle custom module (no library reference)
       else if (input.isCustom && input.moduleName) {
@@ -284,7 +283,6 @@ export const checklistService = {
         moduleDescription = input.moduleDescription || undefined
         libraryModuleId = null
         testcases = [] // Custom modules start with 0 testcases
-        console.log(`[DEBUG] Creating custom module "${moduleName}" with 0 test cases`)
       } else {
         return { success: false, error: 'Invalid input: must provide either moduleId or moduleName' }
       }
