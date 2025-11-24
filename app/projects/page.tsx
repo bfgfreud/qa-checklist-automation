@@ -103,7 +103,7 @@ export default function ProjectsPage() {
   const fetchProjects = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/projects');
+      const response = await fetch(`/api/projects?t=${Date.now()}`, { cache: 'no-store' });
       const result = await response.json();
 
       if (result.success) {

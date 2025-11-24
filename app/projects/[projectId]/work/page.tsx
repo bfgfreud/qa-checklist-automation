@@ -217,7 +217,7 @@ export default function WorkingModePage() {
         testCase.results.forEach((result) => {
           // Only expand non-Pass results by default (optimization)
           // Actually, user wants all expanded by default, so expand all
-          allTestIds.add(`${testCase.testCase.id}-${result.tester.id}`);
+          allTestIds.add(`${module.id}-${testCase.testCase.id}-${result.tester.id}`);
         });
       });
     });
@@ -281,7 +281,7 @@ export default function WorkingModePage() {
       module.testCases.forEach(testCase => {
         testCase.results.forEach(result => {
           if (result.status === 'Pass') {
-            const expandKey = `${testCase.testCase.id}-${result.tester.id}`;
+            const expandKey = `${module.id}-${testCase.testCase.id}-${result.tester.id}`;
             passedTests.add(expandKey);
           }
         });
@@ -301,7 +301,7 @@ export default function WorkingModePage() {
     checklist.modules.forEach(module => {
       module.testCases.forEach(testCase => {
         testCase.results.forEach(result => {
-          const expandKey = `${testCase.testCase.id}-${result.tester.id}`;
+          const expandKey = `${module.id}-${testCase.testCase.id}-${result.tester.id}`;
           allTests.add(expandKey);
         });
       });
@@ -378,7 +378,8 @@ export default function WorkingModePage() {
     testerId: string,
     status: TestStatus,
     notes?: string,
-    testCaseId?: string
+    testCaseId?: string,
+    moduleId?: string
   ) => {
     const testedAt = new Date().toISOString();
 
@@ -396,8 +397,8 @@ export default function WorkingModePage() {
     }
 
     // AUTO-COLLAPSE on Pass: Remove from expanded set
-    if (status === 'Pass' && testCaseId) {
-      const expandKey = `${testCaseId}-${testerId}`;
+    if (status === 'Pass' && testCaseId && moduleId) {
+      const expandKey = `${moduleId}-${testCaseId}-${testerId}`;
       setExpandedTests(prev => {
         const newSet = new Set(prev);
         newSet.delete(expandKey);
@@ -902,7 +903,7 @@ export default function WorkingModePage() {
                       if (!ownResult) return null;
 
                       const result = ownResult;
-                      const expandKey = `${testCaseId}-${result.tester.id}`;
+                      const expandKey = `${module.id}-${testCaseId}-${result.tester.id}`;
                       const isExpanded = expandedTests.has(expandKey);
                       const isOwnResult = true;
 
@@ -1011,7 +1012,7 @@ export default function WorkingModePage() {
                                           key={status}
                                           onClick={() => {
                                             if (isOwnResult) {
-                                              updateTestStatus(result.id, result.tester.id, status, result.notes || undefined, testCaseId);
+                                              updateTestStatus(result.id, result.tester.id, status, result.notes || undefined, testCaseId, module.id);
                                             }
                                           }}
                                           disabled={!isOwnResult}
