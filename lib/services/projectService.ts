@@ -143,5 +143,75 @@ export const projectService = {
       console.error('Unexpected error in deleteProject:', error)
       return { success: false, error: 'Internal server error' }
     }
+  },
+
+  /**
+   * Calculate and update project status based on checklist progress
+   * Status logic:
+   * - Draft: 0% progress (no test results)
+   * - In Progress: 1-99% progress (some tests completed, not all passed)
+   * - Completed: 100% progress with all tests passed
+   */
+  async updateProjectStatus(projectId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Get checklist for this project
+      const { data: checklist, error: checklistError } = await supabase
+        .from('project_checklists')
+        .select('id, test_results')
+        .eq('project_id', projectId)
+        .single()
+
+      if (checklistError || !checklist) {
+        // No checklist yet, set to Draft
+        await supabase
+          .from('test_projects')
+          .update({ status: 'Draft' })
+          .eq('id', projectId)
+        return { success: true }
+      }
+
+      const testResults = checklist.test_results as Array<{ status: string }> || []
+      const total = testResults.length
+
+      if (total === 0) {
+        // No test results, set to Draft
+        await supabase
+          .from('test_projects')
+          .update({ status: 'Draft' })
+          .eq('id', projectId)
+        return { success: true }
+      }
+
+      // Count test results
+      const pending = testResults.filter((t) => t.status === 'Pending').length
+      const passed = testResults.filter((t) => t.status === 'Pass').length
+      const failed = testResults.filter((t) => t.status === 'Fail').length
+      const skipped = testResults.filter((t) => t.status === 'Skipped').length
+      const completed = passed + failed + skipped
+
+      let newStatus: string
+
+      if (completed === 0) {
+        // No progress yet
+        newStatus = 'Draft'
+      } else if (completed === total && failed === 0 && skipped === 0) {
+        // All tests passed (100% pass rate)
+        newStatus = 'Completed'
+      } else {
+        // Some progress, but not all passed
+        newStatus = 'In Progress'
+      }
+
+      // Update project status
+      await supabase
+        .from('test_projects')
+        .update({ status: newStatus })
+        .eq('id', projectId)
+
+      return { success: true }
+    } catch (error) {
+      console.error('Error updating project status:', error)
+      return { success: false, error: 'Failed to update project status' }
+    }
   }
 }

@@ -713,6 +713,7 @@ export const checklistService = {
   ): Promise<{
     success: boolean
     data?: ChecklistTestResult
+    projectId?: string
     error?: string
   }> {
     try {
@@ -741,6 +742,12 @@ export const checklistService = {
             title,
             description,
             priority
+          ),
+          project_checklist_modules!inner (
+            project_checklist_id,
+            project_checklists!inner (
+              project_id
+            )
           )
         `)
         .single()
@@ -753,6 +760,16 @@ export const checklistService = {
       const testcase = Array.isArray(data.base_testcases)
         ? data.base_testcases[0]
         : data.base_testcases
+
+      // Extract project ID from nested data
+      const moduleData: any = Array.isArray(data.project_checklist_modules)
+        ? data.project_checklist_modules[0]
+        : data.project_checklist_modules
+
+      const checklistData: any = moduleData?.project_checklists
+      const projectId = Array.isArray(checklistData)
+        ? checklistData[0]?.project_id
+        : checklistData?.project_id
 
       const result: ChecklistTestResult = {
         id: data.id,
@@ -769,7 +786,7 @@ export const checklistService = {
         updatedAt: data.updated_at
       }
 
-      return { success: true, data: result }
+      return { success: true, data: result, projectId }
     } catch (error) {
       console.error('Unexpected error in updateTestResult:', error)
       return { success: false, error: 'Internal server error' }
@@ -1058,6 +1075,7 @@ export const checklistService = {
   ): Promise<{
     success: boolean
     data?: ChecklistTestResult
+    projectId?: string
     error?: string
   }> {
     try {

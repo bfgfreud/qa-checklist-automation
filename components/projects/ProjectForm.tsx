@@ -245,53 +245,30 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
               </div>
             </div>
 
-            {/* Status and Priority - Side by Side */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Status */}
-              <div>
-                <label
-                  htmlFor="status"
-                  className="block text-sm font-medium text-gray-300 mb-2"
-                >
-                  Status
-                </label>
-                <select
-                  id="status"
-                  name="status"
-                  value={formData.status}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-dark-elevated border border-dark-primary rounded-lg text-gray-200 focus:outline-none focus:border-primary-500 transition-colors"
-                >
-                  {statusOptions.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Priority */}
-              <div>
-                <label
-                  htmlFor="priority"
-                  className="block text-sm font-medium text-gray-300 mb-2"
-                >
-                  Priority
-                </label>
-                <select
-                  id="priority"
-                  name="priority"
-                  value={formData.priority}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-dark-elevated border border-dark-primary rounded-lg text-gray-200 focus:outline-none focus:border-primary-500 transition-colors"
-                >
-                  {priorityOptions.map((priority) => (
-                    <option key={priority} value={priority}>
-                      {priority}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Priority - Full Width (Status is auto-calculated) */}
+            <div>
+              <label
+                htmlFor="priority"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
+                Priority
+              </label>
+              <select
+                id="priority"
+                name="priority"
+                value={formData.priority}
+                onChange={handleChange}
+                className="w-full px-4 py-3 bg-dark-elevated border border-dark-primary rounded-lg text-gray-200 focus:outline-none focus:border-primary-500 transition-colors"
+              >
+                {priorityOptions.map((priority) => (
+                  <option key={priority} value={priority}>
+                    {priority}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-gray-500">
+                Status is automatically calculated: Draft (0% progress) → In Progress (1-99%) → Completed (100% passed)
+              </p>
             </div>
 
             {/* Due Date - Full Width */}

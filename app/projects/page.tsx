@@ -57,6 +57,46 @@ export default function ProjectsPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
+  // Prevent navigation when there are unsaved changes
+  useEffect(() => {
+    const handleRouteChange = () => {
+      if (hasUnsavedChanges) {
+        const confirmLeave = window.confirm(
+          'You have unsaved changes. Do you want to leave without saving?'
+        );
+        if (!confirmLeave) {
+          // Prevent navigation by throwing an error
+          throw 'Route change cancelled by user';
+        }
+      }
+    };
+
+    // Listen to link clicks and browser back/forward
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const link = target.closest('a');
+
+      if (link && link.href && hasUnsavedChanges) {
+        // Check if it's an internal navigation
+        const currentOrigin = window.location.origin;
+        if (link.href.startsWith(currentOrigin) || link.href.startsWith('/')) {
+          const confirmLeave = window.confirm(
+            'You have unsaved changes. Do you want to leave without saving?'
+          );
+          if (!confirmLeave) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('click', handleClick, true);
+    return () => {
+      document.removeEventListener('click', handleClick, true);
+    };
+  }, [hasUnsavedChanges]);
+
   /**
    * Fetch all projects from the API
    */
@@ -179,7 +219,7 @@ export default function ProjectsPage() {
               description: data.description !== undefined ? data.description : p.description,
               version: data.version !== undefined ? data.version : p.version,
               platform: data.platform !== undefined ? data.platform : p.platform,
-              status: data.status || p.status,
+              // Status is auto-calculated, keep existing status
               priority: data.priority || p.priority,
               dueDate: data.dueDate !== undefined ? data.dueDate : p.dueDate,
               updatedAt: new Date().toISOString(),
@@ -231,7 +271,7 @@ export default function ProjectsPage() {
             dp.description !== serverProject.description ||
             dp.version !== serverProject.version ||
             dp.platform !== serverProject.platform ||
-            dp.status !== serverProject.status ||
+            // Status is auto-calculated, don't check it
             dp.priority !== serverProject.priority ||
             dp.dueDate !== serverProject.dueDate;
 
@@ -303,7 +343,7 @@ export default function ProjectsPage() {
               description: project.description,
               version: project.version,
               platform: project.platform,
-              status: project.status,
+              // Status is auto-calculated, don't send it
               priority: project.priority,
               due_date: project.dueDate,
             }),
@@ -374,7 +414,7 @@ export default function ProjectsPage() {
       project.description !== serverProject.description ||
       project.version !== serverProject.version ||
       project.platform !== serverProject.platform ||
-      project.status !== serverProject.status ||
+      // Status is auto-calculated, don't check it for modifications
       project.priority !== serverProject.priority ||
       project.dueDate !== serverProject.dueDate
     );

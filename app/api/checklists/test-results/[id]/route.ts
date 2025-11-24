@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checklistService } from '@/lib/services/checklistService'
+import { projectService } from '@/lib/services/projectService'
 import { updateTestResultSchema, updateTestResultWithTesterSchema } from '@/lib/validations/checklist.schema'
 import { z } from 'zod'
 
@@ -57,6 +58,11 @@ export async function PUT(
         )
       }
 
+      // Automatically update project status based on progress
+      if (result.projectId) {
+        await projectService.updateProjectStatus(result.projectId)
+      }
+
       return NextResponse.json(
         { success: true, data: result.data },
         { status: 200 }
@@ -74,6 +80,11 @@ export async function PUT(
         { success: false, error: result.error },
         { status: statusCode }
       )
+    }
+
+    // Automatically update project status based on progress
+    if (result.projectId) {
+      await projectService.updateProjectStatus(result.projectId)
     }
 
     return NextResponse.json(
