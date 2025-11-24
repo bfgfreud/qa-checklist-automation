@@ -154,15 +154,19 @@ export const projectService = {
    */
   async updateProjectStatus(projectId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Get checklist for this project
-      const { data: checklist, error: checklistError } = await supabase
-        .from('project_checklists')
-        .select('id, test_results')
+      // Get all test results for this project via project_checklist_modules
+      const { data: modules, error: modulesError } = await supabase
+        .from('project_checklist_modules')
+        .select('id')
         .eq('project_id', projectId)
-        .single()
 
-      if (checklistError || !checklist) {
-        // No checklist yet, set to Draft
+      if (modulesError) {
+        console.error('Error fetching modules:', modulesError)
+        return { success: false, error: 'Failed to fetch modules' }
+      }
+
+      if (!modules || modules.length === 0) {
+        // No modules yet, set to Draft
         await supabase
           .from('test_projects')
           .update({ status: 'Draft' })
@@ -170,8 +174,19 @@ export const projectService = {
         return { success: true }
       }
 
-      const testResults = checklist.test_results as Array<{ status: string }> || []
-      const total = testResults.length
+      // Get all test results for these modules
+      const moduleIds = modules.map(m => m.id)
+      const { data: testResults, error: resultsError } = await supabase
+        .from('checklist_test_results')
+        .select('status')
+        .in('project_checklist_module_id', moduleIds)
+
+      if (resultsError) {
+        console.error('Error fetching test results:', resultsError)
+        return { success: false, error: 'Failed to fetch test results' }
+      }
+
+      const total = testResults?.length || 0
 
       if (total === 0) {
         // No test results, set to Draft

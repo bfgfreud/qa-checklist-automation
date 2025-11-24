@@ -724,7 +724,7 @@ export const checklistService = {
       if (input.notes !== undefined) updateData.notes = input.notes
       if (input.testedBy !== undefined) updateData.tested_by = input.testedBy
 
-      const { data, error } = await supabase
+      const { data, error} = await supabase
         .from('checklist_test_results')
         .update(updateData)
         .eq('id', resultId)
@@ -744,10 +744,7 @@ export const checklistService = {
             priority
           ),
           project_checklist_modules!inner (
-            project_checklist_id,
-            project_checklists!inner (
-              project_id
-            )
+            project_id
           )
         `)
         .single()
@@ -766,10 +763,7 @@ export const checklistService = {
         ? data.project_checklist_modules[0]
         : data.project_checklist_modules
 
-      const checklistData: any = moduleData?.project_checklists
-      const projectId = Array.isArray(checklistData)
-        ? checklistData[0]?.project_id
-        : checklistData?.project_id
+      const projectId = moduleData?.project_id
 
       const result: ChecklistTestResult = {
         id: data.id,
