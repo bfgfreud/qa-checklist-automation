@@ -45,20 +45,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect to projects if already logged in and trying to access login
+  // Redirect to dashboard if already logged in and trying to access login
   if (user && request.nextUrl.pathname === '/login') {
     const url = request.nextUrl.clone()
-    url.pathname = '/projects'
+    url.pathname = '/'
     return NextResponse.redirect(url)
   }
 
-  // Redirect homepage to projects if logged in, login if not
-  if (user && request.nextUrl.pathname === '/') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/projects'
-    return NextResponse.redirect(url)
-  }
-
+  // Redirect to login if not authenticated and trying to access homepage
   if (!user && request.nextUrl.pathname === '/') {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
