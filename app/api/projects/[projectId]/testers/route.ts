@@ -20,7 +20,14 @@ export async function GET(
       )
     }
 
-    return NextResponse.json({ success: true, data: result.data })
+    return NextResponse.json(
+      { success: true, data: result.data },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=59',
+        }
+      }
+    )
   } catch (error) {
     console.error('Error in GET /api/projects/[projectId]/testers:', error)
     return NextResponse.json(
