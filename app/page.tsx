@@ -88,42 +88,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-black text-gray-200">
-      {/* Header/Navigation Bar */}
-      <header className="bg-dark-secondary border-b border-dark-primary">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo/Title */}
-            <div className="flex items-center">
-              <h1 className="text-xl sm:text-2xl font-bold text-primary-500 flex items-center gap-2">
-                <span className="text-2xl">🔥</span>
-                <span className="hidden sm:inline">Bonfire Gathering</span>
-                <span className="sm:hidden">Bonfire</span>
-                <span className="hidden md:inline text-gray-400 font-normal ml-2">
-                  - QA Checklist Automation
-                </span>
-              </h1>
-            </div>
-
-            {/* Navigation */}
-            <nav className="flex space-x-1 sm:space-x-4">
-              {['Dashboard', 'Modules', 'Projects'].map((item) => (
-                <button
-                  key={item}
-                  onClick={() => handleNavigation(item)}
-                  className={`px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    activeNav === item
-                      ? 'bg-primary-500 text-white'
-                      : 'text-gray-300 hover:bg-dark-elevated hover:text-white'
-                  }`}
-                >
-                  {item}
-                </button>
-              ))}
-            </nav>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Quick Actions Section */}

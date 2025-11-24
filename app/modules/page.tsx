@@ -1046,41 +1046,6 @@ export default function ModulesPage() {
 
   return (
     <div className="min-h-screen bg-black text-gray-200">
-      {/* Header */}
-      <header className="bg-dark-secondary border-b border-dark-primary">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl sm:text-2xl font-bold text-primary-500 flex items-center gap-2">
-                <span className="text-2xl">🔥</span>
-                <span className="hidden sm:inline">Bonfire Gathering</span>
-                <span className="sm:hidden">Bonfire</span>
-              </h1>
-            </div>
-            <nav className="flex space-x-1 sm:space-x-4">
-              <a
-                href="/"
-                className="px-3 sm:px-4 py-2 rounded-md text-sm font-medium text-gray-300 hover:bg-dark-elevated hover:text-white transition-colors"
-              >
-                Dashboard
-              </a>
-              <a
-                href="/modules"
-                className="px-3 sm:px-4 py-2 rounded-md text-sm font-medium bg-primary-500 text-white transition-colors"
-              >
-                Modules
-              </a>
-              <a
-                href="/projects"
-                className="px-3 sm:px-4 py-2 rounded-md text-sm font-medium text-gray-300 hover:bg-dark-elevated hover:text-white transition-colors"
-              >
-                Projects
-              </a>
-            </nav>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
