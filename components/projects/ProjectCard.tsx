@@ -256,47 +256,78 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
       </div>
 
       {/* Progress Section */}
-      {progress && progress.total > 0 && (
-        <div className="mt-4 pt-4 border-t border-dark-primary">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-400">Progress</span>
-            <span className="text-sm font-semibold text-primary-500">
-              {progress.progress}%
-            </span>
+      <div className="mt-4 pt-4 border-t border-dark-primary">
+        {loading ? (
+          // Skeleton for progress section
+          <div className="animate-pulse">
+            <div className="flex items-center justify-between mb-2">
+              <div className="h-4 w-16 bg-dark-elevated rounded"></div>
+              <div className="h-4 w-10 bg-dark-elevated rounded"></div>
+            </div>
+            <div className="h-2 bg-dark-elevated rounded-full mb-3"></div>
+            <div className="grid grid-cols-4 gap-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="bg-dark-elevated rounded px-2 py-1.5">
+                  <div className="h-3 w-12 bg-dark-primary rounded mb-1"></div>
+                  <div className="h-4 w-8 bg-dark-primary rounded"></div>
+                </div>
+              ))}
+            </div>
           </div>
-          <ProgressBar value={progress.progress} max={100} size="md" showLabel={false} />
+        ) : progress && progress.total > 0 ? (
+          <>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-400">Progress</span>
+              <span className="text-sm font-semibold text-primary-500">
+                {progress.progress}%
+              </span>
+            </div>
+            <ProgressBar value={progress.progress} max={100} size="md" showLabel={false} />
 
-          {/* Test Stats */}
-          <div className="mt-3 grid grid-cols-4 gap-2 text-center">
-            <div className="bg-dark-elevated rounded px-2 py-1.5">
-              <div className="text-xs text-gray-500">Pending</div>
-              <div className="text-sm font-semibold text-gray-400">{progress.pending}</div>
+            {/* Test Stats */}
+            <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+              <div className="bg-dark-elevated rounded px-2 py-1.5">
+                <div className="text-xs text-gray-500">Pending</div>
+                <div className="text-sm font-semibold text-gray-400">{progress.pending}</div>
+              </div>
+              <div className="bg-dark-elevated rounded px-2 py-1.5">
+                <div className="text-xs text-gray-500">Pass</div>
+                <div className="text-sm font-semibold text-green-400">{progress.passed}</div>
+              </div>
+              <div className="bg-dark-elevated rounded px-2 py-1.5">
+                <div className="text-xs text-gray-500">Fail</div>
+                <div className="text-sm font-semibold text-red-400">{progress.failed}</div>
+              </div>
+              <div className="bg-dark-elevated rounded px-2 py-1.5">
+                <div className="text-xs text-gray-500">Skip</div>
+                <div className="text-sm font-semibold text-yellow-400">{progress.skipped}</div>
+              </div>
             </div>
-            <div className="bg-dark-elevated rounded px-2 py-1.5">
-              <div className="text-xs text-gray-500">Pass</div>
-              <div className="text-sm font-semibold text-green-400">{progress.passed}</div>
-            </div>
-            <div className="bg-dark-elevated rounded px-2 py-1.5">
-              <div className="text-xs text-gray-500">Fail</div>
-              <div className="text-sm font-semibold text-red-400">{progress.failed}</div>
-            </div>
-            <div className="bg-dark-elevated rounded px-2 py-1.5">
-              <div className="text-xs text-gray-500">Skip</div>
-              <div className="text-sm font-semibold text-yellow-400">{progress.skipped}</div>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        ) : null}
+      </div>
 
       {/* Testers Section */}
-      {testers.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-dark-primary">
+      <div className="mt-4 pt-4 border-t border-dark-primary">
+        {loading ? (
+          // Skeleton for testers section
+          <div className="animate-pulse">
+            <div className="flex items-center justify-between">
+              <div className="h-4 w-28 bg-dark-elevated rounded"></div>
+              <div className="flex items-center gap-1">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="w-8 h-8 bg-dark-elevated rounded-full"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : testers.length > 0 ? (
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-400">Assigned Testers</span>
             <TesterList testers={testers} maxVisible={3} size="sm" />
           </div>
-        </div>
-      )}
+        ) : null}
+      </div>
 
       {/* Footer - Actions and Created Date */}
       <div className="mt-4 pt-4 border-t border-dark-primary flex items-center justify-between">
