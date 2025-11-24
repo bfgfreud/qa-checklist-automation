@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Project } from '@/types/project';
 import { Tester } from '@/types/tester';
+import { ChecklistModuleWithMultiTesterResults, TestCaseWithResults } from '@/types/checklist';
 import { format, isPast, isToday } from 'date-fns';
 import { Button } from '@/components/ui/Button';
 import { TesterList } from '@/components/ui/TesterList';
@@ -50,19 +51,19 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
           }
         }
 
-        // Fetch project progress
-        const progressRes = await fetch(`/api/checklists/${project.id}`);
+        // Fetch project progress with multi-tester view
+        const progressRes = await fetch(`/api/checklists/${project.id}?view=multi-tester&_t=${Date.now()}`);
         if (progressRes.ok) {
           const progressResult = await progressRes.json();
           if (progressResult.success) {
-            // Calculate progress from checklist data
-            const modules = progressResult.data.modules || [];
-            const allTests = modules.flatMap((m: { testResults?: unknown[] }) => m.testResults || []);
-            const total = allTests.length;
-            const pending = allTests.filter((t: { status: string }) => t.status === 'Pending').length;
-            const passed = allTests.filter((t: { status: string }) => t.status === 'Pass').length;
-            const failed = allTests.filter((t: { status: string }) => t.status === 'Fail').length;
-            const skipped = allTests.filter((t: { status: string }) => t.status === 'Skipped').length;
+            // Calculate progress from checklist data - count unique testcases with aggregated status
+            const modules: ChecklistModuleWithMultiTesterResults[] = progressResult.data.modules || [];
+            const allTestCases = modules.flatMap((m) => m.testCases || []);
+            const total = allTestCases.length;
+            const pending = allTestCases.filter((tc: TestCaseWithResults) => tc.overallStatus === 'Pending').length;
+            const passed = allTestCases.filter((tc: TestCaseWithResults) => tc.overallStatus === 'Pass').length;
+            const failed = allTestCases.filter((tc: TestCaseWithResults) => tc.overallStatus === 'Fail').length;
+            const skipped = allTestCases.filter((tc: TestCaseWithResults) => tc.overallStatus === 'Skipped').length;
             const completed = passed + failed + skipped;
             const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
@@ -282,7 +283,18 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                 {progress.progress}%
               </span>
             </div>
-            <ProgressBar value={progress.progress} max={100} size="md" showLabel={false} />
+            <ProgressBar
+              value={progress.progress}
+              max={100}
+              size="md"
+              showLabel={false}
+              segments={{
+                passed: progress.passed,
+                failed: progress.failed,
+                skipped: progress.skipped,
+                total: progress.total
+              }}
+            />
 
             {/* Test Stats */}
             <div className="mt-3 grid grid-cols-4 gap-2 text-center">

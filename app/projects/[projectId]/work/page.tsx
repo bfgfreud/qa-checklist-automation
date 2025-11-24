@@ -47,6 +47,9 @@ export default function WorkingModePage() {
   // Polling interval (5 seconds)
   const [isPolling, setIsPolling] = useState(true);
 
+  // Track if we're currently assigning a tester to prevent loops
+  const isAssigningRef = useRef(false);
+
   // Track pending updates to prevent polling from overwriting optimistic updates
   const pendingUpdatesRef = useRef<Set<string>>(new Set());
   const pausePollingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -104,25 +107,44 @@ export default function WorkingModePage() {
       if (checklistResult?.success) {
         const serverData: ProjectChecklistWithTesters = checklistResult.data;
 
-        // Auto-assign current tester if not already assigned
-        if (currentTester) {
+        // Auto-assign current tester if not already assigned (only once)
+        if (currentTester && !isAssigningRef.current) {
           const isAssigned = serverData.assignedTesters?.some(t => t.id === currentTester.id);
 
           if (!isAssigned) {
+            // Set flag to prevent multiple assignment attempts
+            isAssigningRef.current = true;
+            console.log('[Auto-assign] Assigning current tester to project...');
+
             // Silently assign current tester to project
             try {
-              await fetch(`/api/projects/${projectId}/testers`, {
+              const response = await fetch(`/api/projects/${projectId}/testers`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ testerId: currentTester.id })
               });
 
-              // Reload data to get updated assignments
-              await fetchData(showLoading);
-              return;
+              if (response.ok) {
+                console.log('[Auto-assign] Assignment successful, data will refresh via polling');
+                // Don't call fetchData recursively - let the component naturally refetch
+                // The useEffect below will trigger on next render cycle
+              } else if (response.status === 409) {
+                // Already assigned (race condition) - this is fine
+                console.log('[Auto-assign] Tester already assigned (409), continuing...');
+              } else {
+                console.error('[Auto-assign] Assignment failed:', response.status);
+              }
             } catch (err) {
-              console.error('Error auto-assigning tester:', err);
+              console.error('[Auto-assign] Error assigning tester:', err);
+            } finally {
+              // Reset flag after a short delay to allow refetch
+              setTimeout(() => {
+                isAssigningRef.current = false;
+              }, 1000);
             }
+
+            // Exit early - let next fetch cycle pick up the assignment
+            return;
           }
         }
 
