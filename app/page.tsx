@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTester } from '@/contexts/TesterContext';
+import { useCurrentTester } from '@/contexts/TesterContext';
 import { Project } from '@/types/project';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { currentTester } = useTester();
+  const { currentTester } = useCurrentTester();
   const [myProjects, setMyProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -85,7 +85,7 @@ export default function DashboardPage() {
             Welcome back, {currentTester?.name || 'Tester'}! 👋
           </h1>
           <p className="text-dark-text-secondary">
-            Here are the projects you're currently assigned to
+            Here are the projects you&apos;re currently assigned to
           </p>
         </div>
 
@@ -150,7 +150,7 @@ export default function DashboardPage() {
                 No Active Projects
               </h3>
               <p className="text-dark-text-secondary mb-6">
-                You haven't been assigned to any projects yet.
+                You haven&apos;t been assigned to any projects yet.
               </p>
               <button
                 onClick={() => router.push('/projects')}
