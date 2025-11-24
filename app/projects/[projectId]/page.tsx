@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Project } from '@/types/project';
 import { Tester } from '@/types/tester';
-import { ChecklistModuleWithMultiTesterResults } from '@/types/checklist';
+import { ChecklistModuleWithMultiTesterResults, TestCaseWithResults } from '@/types/checklist';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { TesterList } from '@/components/ui/TesterList';
 import { Button } from '@/components/ui/Button';
@@ -70,10 +70,10 @@ export default function ProjectOverviewPage() {
           // Each testCase appears once with aggregated overallStatus
           const allTestCases = checklistModules.flatMap((m: ChecklistModuleWithMultiTesterResults) => m.testCases || []);
           const total = allTestCases.length;
-          const pending = allTestCases.filter((tc) => tc.overallStatus === 'Pending').length;
-          const passed = allTestCases.filter((tc) => tc.overallStatus === 'Pass').length;
-          const failed = allTestCases.filter((tc) => tc.overallStatus === 'Fail').length;
-          const skipped = allTestCases.filter((tc) => tc.overallStatus === 'Skipped').length;
+          const pending = allTestCases.filter((tc: TestCaseWithResults) => tc.overallStatus === 'Pending').length;
+          const passed = allTestCases.filter((tc: TestCaseWithResults) => tc.overallStatus === 'Pass').length;
+          const failed = allTestCases.filter((tc: TestCaseWithResults) => tc.overallStatus === 'Fail').length;
+          const skipped = allTestCases.filter((tc: TestCaseWithResults) => tc.overallStatus === 'Skipped').length;
           const completed = passed + failed + skipped;
           const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
 
@@ -285,10 +285,10 @@ export default function ProjectOverviewPage() {
                 // Calculate module stats from testCases array
                 const testCases = module.testCases || [];
                 const totalTests = testCases.length;
-                const pendingTests = testCases.filter((tc) => tc.overallStatus === 'Pending').length;
-                const passedTests = testCases.filter((tc) => tc.overallStatus === 'Pass').length;
-                const failedTests = testCases.filter((tc) => tc.overallStatus === 'Fail').length;
-                const skippedTests = testCases.filter((tc) => tc.overallStatus === 'Skipped').length;
+                const pendingTests = testCases.filter((tc: TestCaseWithResults) => tc.overallStatus === 'Pending').length;
+                const passedTests = testCases.filter((tc: TestCaseWithResults) => tc.overallStatus === 'Pass').length;
+                const failedTests = testCases.filter((tc: TestCaseWithResults) => tc.overallStatus === 'Fail').length;
+                const skippedTests = testCases.filter((tc: TestCaseWithResults) => tc.overallStatus === 'Skipped').length;
                 const completedTests = passedTests + failedTests + skippedTests;
                 const moduleProgress = totalTests > 0
                   ? Math.round((completedTests / totalTests) * 100)
