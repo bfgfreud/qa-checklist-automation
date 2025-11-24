@@ -89,24 +89,6 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Quick Actions */}
-        <section className="mb-12">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <button
-              onClick={() => router.push('/projects')}
-              className="flex-1 bg-primary-500 hover:bg-primary-600 text-white font-semibold py-4 px-6 rounded-lg transition-colors shadow-lg hover:shadow-xl transform hover:scale-105 duration-200"
-            >
-              <span className="text-lg">📋 View All Projects</span>
-            </button>
-            <button
-              onClick={() => router.push('/modules')}
-              className="flex-1 border-2 border-primary-500 text-primary-500 hover:bg-primary-500 hover:text-white font-semibold py-4 px-6 rounded-lg transition-colors shadow-lg hover:shadow-xl transform hover:scale-105 duration-200"
-            >
-              <span className="text-lg">📝 Manage Modules</span>
-            </button>
-          </div>
-        </section>
-
         {/* My Projects Section */}
         <section>
           <div className="flex items-center justify-between mb-6">
