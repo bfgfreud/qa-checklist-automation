@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { Tester } from '@/types/tester';
 import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
+import { useRouter } from 'next/navigation';
 
 interface TesterContextType {
   currentTester: Tester | null;
@@ -21,6 +22,7 @@ export function TesterProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
+  const router = useRouter();
 
   useEffect(() => {
     // Get initial session
@@ -102,6 +104,8 @@ export function TesterProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setCurrentTester(null);
+    router.push('/login');
+    router.refresh();
   };
 
   const updateProfile = async (name: string, color: string): Promise<boolean> => {
