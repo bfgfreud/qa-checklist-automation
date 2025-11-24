@@ -10,6 +10,8 @@ interface TesterContextType {
   user: User | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  updateProfile: (name: string, color: string) => Promise<boolean>;
+  refreshTester: () => Promise<void>;
 }
 
 const TesterContext = createContext<TesterContextType | undefined>(undefined);
@@ -72,11 +74,14 @@ export function TesterProvider({ children }: { children: ReactNode }) {
       }
 
       // Create new tester from auth user
+      const rawName = user.user_metadata.full_name || user.email?.split('@')[0] || 'User';
+      const trimmedName = rawName.length > 15 ? rawName.substring(0, 15) : rawName;
+
       const createResponse = await fetch('/api/testers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: user.user_metadata.full_name || user.email?.split('@')[0] || 'User',
+          name: trimmedName,
           email: user.email || '',
           color: generateRandomColor(),
           auth_user_id: user.id, // Link to Supabase auth user
@@ -99,8 +104,44 @@ export function TesterProvider({ children }: { children: ReactNode }) {
     setCurrentTester(null);
   };
 
+  const updateProfile = async (name: string, color: string): Promise<boolean> => {
+    if (!currentTester) return false;
+
+    try {
+      const response = await fetch(`/api/testers/${currentTester.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, color }),
+      });
+
+      if (response.ok) {
+        await refreshTester();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      return false;
+    }
+  };
+
+  const refreshTester = async () => {
+    if (!currentTester) return;
+
+    try {
+      const response = await fetch(`/api/testers/${currentTester.id}`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setCurrentTester(result.data);
+      }
+    } catch (error) {
+      console.error('Error refreshing tester:', error);
+    }
+  };
+
   return (
-    <TesterContext.Provider value={{ currentTester, user, loading, signOut }}>
+    <TesterContext.Provider value={{ currentTester, user, loading, signOut, updateProfile, refreshTester }}>
       {children}
     </TesterContext.Provider>
   );

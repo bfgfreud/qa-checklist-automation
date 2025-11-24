@@ -59,7 +59,12 @@
       "Bash(rd /s /q \"C:\\Code Stuff\\QA Checklist Automation\\app\\api\\checklists\\modules\\[moduleId]\")",
       "Bash(node -e:*)",
       "Bash(npx next lint:*)",
-      "Bash(timeout /t 2 /nobreak)"
+      "Bash(timeout /t 2 /nobreak)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:support.google.com)",
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:developers.google.com)"
     ],
     "deny": [],
     "ask": []
