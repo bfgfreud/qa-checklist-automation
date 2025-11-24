@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Project } from '@/types/project';
 import { Tester } from '@/types/tester';
-import { ChecklistModuleWithResults } from '@/types/checklist';
+import { ChecklistModuleWithMultiTesterResults } from '@/types/checklist';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { TesterList } from '@/components/ui/TesterList';
 import { Button } from '@/components/ui/Button';
@@ -17,7 +17,7 @@ export default function ProjectOverviewPage() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [testers, setTesters] = useState<Tester[]>([]);
-  const [modules, setModules] = useState<ChecklistModuleWithResults[]>([]);
+  const [modules, setModules] = useState<ChecklistModuleWithMultiTesterResults[]>([]);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,11 +37,11 @@ export default function ProjectOverviewPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch all data in parallel
+        // Fetch all data in parallel - use multi-tester view for accurate counts
         const [projectRes, testersRes, checklistRes] = await Promise.all([
           fetch(`/api/projects/${projectId}`),
           fetch(`/api/projects/${projectId}/testers`),
-          fetch(`/api/checklists/${projectId}`),
+          fetch(`/api/checklists/${projectId}?view=multi-tester&_t=${Date.now()}`), // Multi-tester + cache bust
         ]);
 
         // Parse all responses
@@ -61,18 +61,19 @@ export default function ProjectOverviewPage() {
           setTesters(testersResult.data || []);
         }
 
-        // Update checklist and calculate stats
+        // Update checklist and calculate stats using multi-tester data
         if (checklistResult?.success) {
           const checklistModules = checklistResult.data.modules || [];
           setModules(checklistModules);
 
-          // Calculate stats
-          const allTests = checklistModules.flatMap((m: ChecklistModuleWithResults) => m.testResults || []);
-          const total = allTests.length;
-          const pending = allTests.filter((t: { status: string }) => t.status === 'Pending').length;
-          const passed = allTests.filter((t: { status: string }) => t.status === 'Pass').length;
-          const failed = allTests.filter((t: { status: string }) => t.status === 'Fail').length;
-          const skipped = allTests.filter((t: { status: string }) => t.status === 'Skipped').length;
+          // Calculate stats from unique testcases (not per-tester results)
+          // Each testCase appears once with aggregated overallStatus
+          const allTestCases = checklistModules.flatMap((m: ChecklistModuleWithMultiTesterResults) => m.testCases || []);
+          const total = allTestCases.length;
+          const pending = allTestCases.filter((tc) => tc.overallStatus === 'Pending').length;
+          const passed = allTestCases.filter((tc) => tc.overallStatus === 'Pass').length;
+          const failed = allTestCases.filter((tc) => tc.overallStatus === 'Fail').length;
+          const skipped = allTestCases.filter((tc) => tc.overallStatus === 'Skipped').length;
           const completed = passed + failed + skipped;
           const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
 
@@ -280,8 +281,17 @@ export default function ProjectOverviewPage() {
             <div className="space-y-3">
               {modules.map((module) => {
                 const isExpanded = expandedModules.has(module.id);
-                const moduleProgress = module.totalTests > 0
-                  ? Math.round(((module.passedTests + module.failedTests + module.skippedTests) / module.totalTests) * 100)
+
+                // Calculate module stats from testCases array
+                const testCases = module.testCases || [];
+                const totalTests = testCases.length;
+                const pendingTests = testCases.filter((tc) => tc.overallStatus === 'Pending').length;
+                const passedTests = testCases.filter((tc) => tc.overallStatus === 'Pass').length;
+                const failedTests = testCases.filter((tc) => tc.overallStatus === 'Fail').length;
+                const skippedTests = testCases.filter((tc) => tc.overallStatus === 'Skipped').length;
+                const completedTests = passedTests + failedTests + skippedTests;
+                const moduleProgress = totalTests > 0
+                  ? Math.round((completedTests / totalTests) * 100)
                   : 0;
 
                 return (
@@ -316,17 +326,17 @@ export default function ProjectOverviewPage() {
                         {/* Test Count */}
                         <div className="text-center">
                           <div className="text-sm font-semibold text-white">
-                            {module.totalTests}
+                            {totalTests}
                           </div>
                           <div className="text-xs text-gray-500">Tests</div>
                         </div>
 
                         {/* Status Breakdown */}
                         <div className="flex items-center gap-3 text-sm">
-                          <span className="text-gray-400">{module.pendingTests}</span>
-                          <span className="text-green-400">{module.passedTests}</span>
-                          <span className="text-red-400">{module.failedTests}</span>
-                          <span className="text-yellow-400">{module.skippedTests}</span>
+                          <span className="text-gray-400">{pendingTests}</span>
+                          <span className="text-green-400">{passedTests}</span>
+                          <span className="text-red-400">{failedTests}</span>
+                          <span className="text-yellow-400">{skippedTests}</span>
                         </div>
 
                         {/* Progress */}
@@ -350,48 +360,48 @@ export default function ProjectOverviewPage() {
                     {isExpanded && (
                       <div className="px-6 py-4 border-t border-dark-border bg-dark-bg">
                         <div className="space-y-2">
-                          {module.testResults.map((testResult) => (
+                          {testCases.map((testCase) => (
                             <div
-                              key={testResult.id}
+                              key={testCase.testCase.id}
                               className="flex items-center gap-3 py-2 px-3 bg-dark-elevated rounded"
                             >
                               {/* Status Indicator */}
                               <div className={`w-2 h-2 rounded-full ${
-                                testResult.status === 'Pass' ? 'bg-green-500' :
-                                testResult.status === 'Fail' ? 'bg-red-500' :
-                                testResult.status === 'Skipped' ? 'bg-yellow-500' :
+                                testCase.overallStatus === 'Pass' ? 'bg-green-500' :
+                                testCase.overallStatus === 'Fail' ? 'bg-red-500' :
+                                testCase.overallStatus === 'Skipped' ? 'bg-yellow-500' :
                                 'bg-gray-500'
                               }`} />
 
                               {/* Test Case Title */}
                               <div className="flex-1">
                                 <div className="text-sm text-white">
-                                  {testResult.testcaseTitle}
+                                  {testCase.testCase.title}
                                 </div>
-                                {testResult.testcaseDescription && (
+                                {testCase.testCase.description && (
                                   <div className="text-xs text-gray-500 mt-0.5">
-                                    {testResult.testcaseDescription}
+                                    {testCase.testCase.description}
                                   </div>
                                 )}
                               </div>
 
                               {/* Priority */}
                               <span className={`text-xs px-2 py-0.5 rounded ${
-                                testResult.testcasePriority === 'High' ? 'bg-red-500/20 text-red-400' :
-                                testResult.testcasePriority === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                testCase.testCase.priority === 'High' ? 'bg-red-500/20 text-red-400' :
+                                testCase.testCase.priority === 'Medium' ? 'bg-yellow-500/20 text-yellow-400' :
                                 'bg-gray-500/20 text-gray-400'
                               }`}>
-                                {testResult.testcasePriority}
+                                {testCase.testCase.priority}
                               </span>
 
                               {/* Status */}
                               <span className={`text-xs px-2 py-0.5 rounded ${
-                                testResult.status === 'Pass' ? 'bg-green-500/20 text-green-400' :
-                                testResult.status === 'Fail' ? 'bg-red-500/20 text-red-400' :
-                                testResult.status === 'Skipped' ? 'bg-yellow-500/20 text-yellow-400' :
+                                testCase.overallStatus === 'Pass' ? 'bg-green-500/20 text-green-400' :
+                                testCase.overallStatus === 'Fail' ? 'bg-red-500/20 text-red-400' :
+                                testCase.overallStatus === 'Skipped' ? 'bg-yellow-500/20 text-yellow-400' :
                                 'bg-gray-500/20 text-gray-400'
                               }`}>
-                                {testResult.status}
+                                {testCase.overallStatus}
                               </span>
                             </div>
                           ))}
