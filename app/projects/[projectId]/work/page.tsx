@@ -795,10 +795,10 @@ export default function WorkingModePage() {
               return (
               <div
                 key={module.id}
-                className="bg-dark-secondary border border-dark-primary rounded-lg overflow-hidden"
+                className="bg-dark-secondary border border-dark-primary rounded-lg"
               >
-                {/* Module Header - Compact */}
-                <div className="px-4 py-2 bg-dark-elevated border-b border-dark-border flex items-center justify-between sticky top-[72px] z-20">
+                {/* Module Header - Compact - Sticky */}
+                <div className="px-4 py-2 bg-dark-elevated border-b border-dark-border flex items-center justify-between sticky top-[72px] z-20 rounded-t-lg">
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
                       <h2 className="text-lg font-bold text-white">
