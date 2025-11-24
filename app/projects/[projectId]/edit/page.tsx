@@ -363,11 +363,11 @@ export default function ProjectEditPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch all data in parallel
+        // Fetch all data in parallel (with cache-busting for checklist)
         const [projectRes, modulesRes, checklistRes] = await Promise.all([
           fetch(`/api/projects/${projectId}`),
           fetch('/api/modules'),
-          fetch(`/api/checklists/${projectId}`),
+          fetch(`/api/checklists/${projectId}?_t=${Date.now()}`),
         ]);
 
         // Parse all responses
@@ -1240,7 +1240,7 @@ export default function ProjectEditPage() {
       }
 
       // Refresh checklist from server to get real IDs and data
-      const checklistRes = await fetch(`/api/checklists/${projectId}`, {
+      const checklistRes = await fetch(`/api/checklists/${projectId}?_t=${Date.now()}`, {
         cache: 'no-store',
       });
 
