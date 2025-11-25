@@ -302,7 +302,7 @@ export function ImportChecklistDialog({
                   </p>
                   {existingModuleLabels.length > 0 && (
                     <p className="mt-1 text-yellow-400/80">
-                      Duplicate module names will be renamed with "(imported)" suffix.
+                      Duplicate module names will be renamed with &quot;(imported)&quot; suffix.
                     </p>
                   )}
                 </div>
