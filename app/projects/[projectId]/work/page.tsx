@@ -10,6 +10,7 @@ import { TesterAvatar } from '@/components/ui/TesterAvatar';
 import { ImageUploader } from '@/components/ui/ImageUploader';
 import { ImageGallery } from '@/components/ui/ImageGallery';
 import { useCurrentTester } from '@/contexts/TesterContext';
+import { linkifyText } from '@/lib/utils/linkify';
 
 export default function WorkingModePage() {
   const params = useParams();
@@ -49,6 +50,9 @@ export default function WorkingModePage() {
 
   // Track if we're currently assigning a tester to prevent loops
   const isAssigningRef = useRef(false);
+
+  // Track which notes field is currently focused (never clear its local edit)
+  const focusedResultIdRef = useRef<string | null>(null);
 
   // Track pending updates to prevent polling from overwriting optimistic updates
   const pendingUpdatesRef = useRef<Set<string>>(new Set());
@@ -373,6 +377,12 @@ export default function WorkingModePage() {
         // Clear local edit after 10 seconds of NO MORE TYPING
         // This is longer than the save debounce, so it only clears if user has stopped working
         notesClearTimeoutRef.current[resultId] = setTimeout(() => {
+          // NEVER clear if this field is currently focused
+          if (focusedResultIdRef.current === resultId) {
+            console.log(`[Notes] Skipping clear for ${resultId} - field is focused`);
+            return;
+          }
+
           const edit = localEditsRef.current[resultId];
           if (edit && edit.lastActivity) {
             const timeSinceLastActivity = Date.now() - edit.lastActivity;
@@ -1084,10 +1094,14 @@ export default function WorkingModePage() {
                                           updateTestNotes(result.id, result.tester.id, newNotes, result.status);
                                         }}
                                         onFocus={(e) => {
+                                          // Track focus to prevent clearing local edit
+                                          focusedResultIdRef.current = result.id;
                                           // Expand on focus
                                           e.target.rows = 6;
                                         }}
                                         onBlur={(e) => {
+                                          // Clear focus tracking
+                                          focusedResultIdRef.current = null;
                                           // Collapse on blur
                                           e.target.rows = 1;
                                         }}
@@ -1120,7 +1134,7 @@ export default function WorkingModePage() {
                                             title={result.notes && result.notes.trim() ? "Click to view notes" : "No notes"}
                                           >
                                             {result.notes && result.notes.trim() ? (
-                                              <span className="truncate block">📝 {result.notes}</span>
+                                              <span className="truncate block">📝 {linkifyText(result.notes)}</span>
                                             ) : (
                                               <span>No notes</span>
                                             )}
@@ -1144,7 +1158,7 @@ export default function WorkingModePage() {
                                               </button>
                                             </div>
                                             <div className="bg-dark-bg border border-dark-border rounded px-2 py-1.5 text-xs text-gray-300 whitespace-pre-wrap">
-                                              {result.notes}
+                                              {result.notes ? linkifyText(result.notes) : ''}
                                             </div>
                                           </div>
                                         )}

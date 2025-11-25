@@ -89,10 +89,13 @@ export default function ModulesPage() {
   /**
    * Fetch all modules with their test cases from the API
    */
-  const fetchModules = async () => {
+  const fetchModules = async (bustCache = false) => {
     setLoading(true);
     try {
-      const response = await fetch('/api/modules');
+      const url = bustCache ? `/api/modules?_t=${Date.now()}` : '/api/modules';
+      const response = await fetch(url, {
+        cache: bustCache ? 'no-cache' : 'default',
+      });
       const result = await response.json();
 
       if (result.success) {
@@ -630,8 +633,8 @@ export default function ModulesPage() {
         success('All changes saved successfully');
       }
 
-      // Reload from server to sync state
-      await fetchModules();
+      // Reload from server to sync state (bust cache to get fresh data)
+      await fetchModules(true);
     } catch {
       console.error('Error saving changes:');
       error('Failed to save changes');
