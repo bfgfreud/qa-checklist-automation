@@ -48,6 +48,9 @@ export default function WorkingModePage() {
   // Polling interval (5 seconds)
   const [isPolling, setIsPolling] = useState(true);
 
+  // Track saving states for visual feedback
+  const [savingResults, setSavingResults] = useState<Set<string>>(new Set());
+
   // Track if we're currently assigning a tester to prevent loops
   const isAssigningRef = useRef(false);
 
@@ -361,6 +364,9 @@ export default function WorkingModePage() {
 
     // Set new timeout for auto-save (1.5 seconds after user stops typing)
     notesTimeoutRef.current[resultId] = setTimeout(async () => {
+      // Mark as saving
+      setSavingResults(prev => new Set(prev).add(resultId));
+
       try {
         const response = await fetch(`/api/checklists/test-results/${resultId}`, {
           method: 'PUT',
@@ -373,6 +379,13 @@ export default function WorkingModePage() {
         }
 
         console.log(`[Notes] Saved successfully for ${resultId}, will clear local edit after 10s of inactivity`);
+
+        // Clear saving indicator
+        setSavingResults(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(resultId);
+          return newSet;
+        });
 
         // Clear local edit after 10 seconds of NO MORE TYPING
         // This is longer than the save debounce, so it only clears if user has stopped working
@@ -398,6 +411,13 @@ export default function WorkingModePage() {
         console.error('Error saving notes:', err);
         alert('Failed to save notes. Please try again.');
         // Keep local edit on error so user doesn't lose their work
+
+        // Clear saving indicator on error
+        setSavingResults(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(resultId);
+          return newSet;
+        });
       }
     }, 1500);
   };
@@ -474,6 +494,9 @@ export default function WorkingModePage() {
       setChecklist(updatedChecklist);
     }
 
+    // Mark as saving
+    setSavingResults(prev => new Set(prev).add(resultId));
+
     try {
       const response = await fetch(`/api/checklists/test-results/${resultId}`, {
         method: 'PUT',
@@ -486,6 +509,13 @@ export default function WorkingModePage() {
       }
 
       console.log(`[Status] Updated successfully for ${resultId}, will clear after 10s inactivity`);
+
+      // Clear saving indicator
+      setSavingResults(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(resultId);
+        return newSet;
+      });
 
       // Clear local edit after 10 seconds of no more clicks
       statusClearTimeoutRef.current[resultId] = setTimeout(() => {
@@ -503,6 +533,14 @@ export default function WorkingModePage() {
       console.error('Error updating test result:', err);
       alert('Failed to update test result. Please try again.');
       // Keep local edit on error so user doesn't lose their change
+
+      // Clear saving indicator on error
+      setSavingResults(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(resultId);
+        return newSet;
+      });
+
       fetchData(false);
     }
   };
@@ -619,12 +657,16 @@ export default function WorkingModePage() {
                 <span className="text-xs text-gray-500">
                   {isPolling ? 'Live' : 'Paused'}
                 </span>
-                {/* Debug: Show active edits count */}
-                {Object.keys(localEditsRef.current).length > 0 && (
-                  <span className="text-xs text-yellow-400 ml-2">
-                    ({Object.keys(localEditsRef.current).length} unsaved)
+                {/* Save Status Indicator */}
+                {savingResults.size > 0 ? (
+                  <span className="text-xs text-yellow-400 ml-2 animate-pulse">
+                    Saving {savingResults.size} item(s)...
                   </span>
-                )}
+                ) : Object.keys(localEditsRef.current).length > 0 ? (
+                  <span className="text-xs text-orange-400 ml-2">
+                    {Object.keys(localEditsRef.current).length} pending
+                  </span>
+                ) : null}
               </div>
 
               {/* Quick Stats */}
@@ -998,6 +1040,13 @@ export default function WorkingModePage() {
                                     </div>
                                   )}
                                 </div>
+
+                                {/* Saving Indicator */}
+                                {savingResults.has(result.id) && (
+                                  <span className="text-xs text-yellow-400 flex-shrink-0 animate-pulse">
+                                    Saving...
+                                  </span>
+                                )}
 
                                 {/* Tester name (for multi-tester view) */}
                                 {viewMode === 'all' && (
