@@ -14,22 +14,38 @@
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **Hosting**: Vercel
-- **Database**: Supabase (pending setup)
+- **Database**: Supabase (PostgreSQL)
 - **Version Control**: GitHub
 
 ## Branding
 - **Company**: Bonfire Gathering
 - **Primary Color**: Orange (#FF6B35)
 - **Theme**: Dark mode (black background)
+- **App Icon**: ChecklistFire.png
 
 ## Project Structure
 ```
 QA Checklist Automation/
-├── app/                    # Next.js app (currently homepage)
-├── frontend/              # Future: Frontend components
-├── backend/               # Future: API routes and services
-├── tests/                 # Future: Automated tests
-├── shared/                # Future: Shared types and utilities
+├── app/                    # Next.js App Router pages and API routes
+│   ├── api/               # Backend API endpoints
+│   ├── modules/           # Module Library page
+│   ├── projects/          # Projects and checklist pages
+│   └── testers/           # Tester management page
+├── components/            # React components
+│   ├── checklists/        # Checklist-related components
+│   ├── layout/            # Layout components
+│   ├── modules/           # Module-related components
+│   ├── projects/          # Project-related components
+│   └── ui/                # Shared UI components
+├── contexts/              # React contexts (TesterContext)
+├── hooks/                 # Custom React hooks
+├── lib/                   # Services, utilities, Supabase clients
+│   ├── db/                # Database client
+│   ├── services/          # Business logic services
+│   └── validations/       # Zod schemas
+├── public/                # Static assets (icon.png)
+├── supabase/              # Database migrations and setup
+├── types/                 # TypeScript type definitions
 └── docs/                  # Documentation
 ```
 
@@ -40,33 +56,16 @@ QA Checklist Automation/
 4. Vercel automatically builds and deploys
 5. Live in ~1-2 minutes
 
-## Environment Variables (for future Supabase integration)
-Add these in Vercel Dashboard → Settings → Environment Variables:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `NEXT_PUBLIC_APP_URL` (already set: https://qa-checklist-automation.vercel.app)
+## Environment Variables
+Set in Vercel Dashboard → Settings → Environment Variables:
+- `NEXT_PUBLIC_SUPABASE_URL` ✅
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` ✅
+- `SUPABASE_SERVICE_ROLE_KEY` ✅
+- `NEXT_PUBLIC_APP_URL` ✅
 
-## Current Status
-✅ Homepage deployed with Bonfire Gathering branding
-✅ Supabase setup complete
-✅ Module Library feature complete with CSV import/export
-⏳ Ready for Projects page development
-
-## Documentation
-
-### Quick Start
-- [QUICK_START.md](./QUICK_START.md) - Get started quickly
-- [SETUP_GUIDE.md](./SETUP_GUIDE.md) - Detailed setup instructions
-
-### Feature Documentation
-- [docs/MODULE_LIBRARY_GUIDE.md](./docs/MODULE_LIBRARY_GUIDE.md) - Complete Module Library documentation
-- [docs/CSV_IMPORT_EXPORT.md](./docs/CSV_IMPORT_EXPORT.md) - CSV import/export guide
-
-### Technical Documentation
-- [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) - Folder structure and architecture
-- [API_TESTING_GUIDE.md](./API_TESTING_GUIDE.md) - API endpoint testing
-- [SUPABASE_TEST_INSTRUCTIONS.md](./SUPABASE_TEST_INSTRUCTIONS.md) - Database testing
+## Current Status (2025-01-25)
+- **Overall Progress**: 90% Complete
+- **Phase**: Phase 5 (Polish & Enhancement) IN PROGRESS
 
 ## Completed Features
 
@@ -75,19 +74,58 @@ Add these in Vercel Dashboard → Settings → Environment Variables:
 - ✅ Drag-and-drop reordering
 - ✅ Draft mode with save/cancel
 - ✅ CSV bulk import/export
-- ✅ Multi-tag support
+- ✅ Multi-tag support with tag management
 - ✅ Search and filtering
-- ✅ Duplicate name validation
+- ✅ Module thumbnail images
 - ✅ Collapse/expand functionality
 
-See [docs/MODULE_LIBRARY_GUIDE.md](./docs/MODULE_LIBRARY_GUIDE.md) for detailed documentation.
+### 2. Projects Management (`/projects`)
+- ✅ Create, edit, delete projects
+- ✅ Project status tracking (Not Started, In Progress, Completed)
+- ✅ Platform categorization
+- ✅ Tester assignment per project
 
-## Next Steps
-1. Build Projects page (similar to Modules, manages test projects)
-2. Build Checklist Builder (select modules → generate project checklists)
-3. Build Checklist Execution (run checklists, mark pass/fail)
-4. Add user authentication
-5. Add tag filtering in Module Library
+### 3. Checklist Builder (Edit Mode)
+- ✅ Add modules from library to project checklist
+- ✅ Drag-and-drop module reordering
+- ✅ Drag-and-drop testcase reordering within modules
+- ✅ Create custom modules (not from library)
+- ✅ Create custom testcases
+- ✅ Import checklist structure from another project
+- ✅ Remove modules/testcases
+- ✅ Copy modules with all testcases
+
+### 4. Checklist Execution (Work Mode)
+- ✅ Multi-tester support (multiple testers per checklist)
+- ✅ Pass/Fail/Skip/Pending status tracking
+- ✅ Notes per testcase per tester
+- ✅ Image attachments with lightbox viewer
+- ✅ Progress bars and completion percentage
+- ✅ Smart polling (5-second refresh)
+- ✅ Optimistic UI updates
+
+### 5. Tester Management (`/testers`)
+- ✅ Create and manage testers
+- ✅ Color-coded tester badges
+- ✅ Current tester selection (persisted in localStorage)
+
+### 6. Overview Mode
+- ✅ Project overview with all modules
+- ✅ Progress statistics
+- ✅ Quick navigation to Edit/Work modes
+
+## Documentation
+- **CLAUDE.md**: Main project instructions and phase tracking
+- **PLANNING.md**: V2 rebuild plan
+- **STATUS.md**: Real-time progress tracking
+- **docs/**: Technical documentation
+
+## Next Steps (Phase 5)
+- [ ] Add email notifications
+- [ ] Build dashboard with analytics
+- [ ] Implement user authentication
+- [ ] Add export functionality (PDF/Excel)
+- [ ] Performance optimization
 
 ---
-Last updated: 2025-01-17
+Last updated: 2025-01-25

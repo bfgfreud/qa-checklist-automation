@@ -5,6 +5,10 @@ import { ClientLayout } from "@/components/layout/ClientLayout";
 export const metadata: Metadata = {
   title: "QA Checklist Automation - Bonfire Gathering",
   description: "QA Checklist Automation Tool",
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({

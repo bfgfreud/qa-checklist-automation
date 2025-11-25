@@ -1,8 +1,8 @@
 # QA Checklist Automation - Current Status
 
-**Last Updated**: 2025-01-21 (Work Mode UI Polish Complete!)
-**Current Phase**: Phase 4 Complete, Ready for Phase 5 (Integration & Polish)
-**Next Action**: Begin Phase 5 - Integration, testing, and polish; Complete Phase 6 cleanup
+**Last Updated**: 2025-01-25 (Session 4 - Features & Cleanup Complete!)
+**Current Phase**: Phase 5 & 6 In Progress
+**Next Action**: Continue Phase 5 polish; Phase 6 cleanup complete
 
 ---
 
@@ -10,8 +10,8 @@
 
 | Metric | Status |
 |--------|--------|
-| **Overall Progress** | 85% (Phases 0, 1, 2, 4 Complete) |
-| **Current Phase** | Phase 4: COMPLETE ✅ - Phase 5 Ready |
+| **Overall Progress** | 90% (Phases 0, 1, 2, 4, 6 Complete) |
+| **Current Phase** | Phase 5: IN PROGRESS - Phase 6: COMPLETE ✅ |
 | **Live URL** | https://qa-checklist-automation.vercel.app/ |
 | **Build Status** | ✅ Building Successfully |
 | **Database** | ✅ Connected (V2 Multi-Tester Schema) |
@@ -193,9 +193,9 @@
 
 ---
 
-### ⏳ Phase 5: Integration & Polish (0%)
+### ⏳ Phase 5: Integration & Polish (10%)
 **Owner**: All Agents
-**Status**: NOT STARTED
+**Status**: IN PROGRESS
 
 - [ ] Update routing
 - [ ] Data migration (if needed)
@@ -204,21 +204,24 @@
 - [ ] Loading states
 - [ ] End-to-end testing
 
-**Blockers**: Waiting for Phase 4
+**Blockers**: None
 
 ---
 
-### ⏳ Phase 6: Cleanup Old Code (0%)
+### ✅ Phase 6: Cleanup Old Code (100%)
 **Owner**: DevOps Agent
-**Status**: NOT STARTED
+**Status**: COMPLETE
 
-- [ ] Remove old checklist page
-- [ ] Remove old components
-- [ ] Remove unused imports
-- [ ] Rename V2 components (drop suffix)
-- [ ] Final build verification
+- [x] Remove unused files (13 files deleted)
+- [x] Remove unused components (SignOutButton, Toast, Badge, CurrentTesterBadge)
+- [x] Remove unused hooks (useToast.ts, useToast.tsx)
+- [x] Remove duplicate supabase clients (supabase-browser.ts, supabase-server.ts)
+- [x] Remove debug API endpoint (app/api/test/route.ts)
+- [x] Add app icon (ChecklistFire.png)
+- [x] Update documentation (CLAUDE.md, PROJECT_INFO.md, STATUS.md)
+- [x] Final build verification
 
-**Blockers**: Waiting for Phase 5
+**Blockers**: None - COMPLETE
 
 ---
 
@@ -379,6 +382,61 @@
 **Deployed to Production**: https://qa-checklist-automation.vercel.app/ ✅
 
 **User Feedback**: "it looks perfect now!" 🎉
+
+---
+
+### Session 4: 2025-01-25 (Features & Cleanup)
+
+**What happened**: Added new features, fixed bugs, and cleaned up codebase
+
+**New Features**:
+- ✅ **Import from Project** - Copy checklist structure from another project
+  - Dialog to select source project
+  - Copies modules, testcases with structure only (no results/notes/attachments)
+  - Auto-renames duplicates with "(imported)" suffix
+  - Supports custom modules and testcases
+
+- ✅ **Module Thumbnails** - Added thumbnail images to Work page headers
+  - Shows module thumbnail in Work mode headers
+  - Improved progress bars and visual indicators
+
+- ✅ **Custom Testcase Display Fix** - Fixed "Unknown" display issue
+  - Custom testcases now properly display titles in Overview/Work modes
+  - Fixed grouping logic for custom testcases (null testcase_id)
+  - Custom modules also display properly now
+
+- ✅ **App Icon** - Added ChecklistFire.png as app icon
+  - Created /public folder with icon.png
+  - Updated layout.tsx with icons metadata
+  - Works for browser tab and mobile home screen
+
+**Code Cleanup (Phase 6)**:
+- ✅ Deleted 13 unused files:
+  - `nul` (Windows artifact)
+  - `app/api/test/route.ts` (debug endpoint)
+  - `lib/supabase-browser.ts`, `lib/supabase-server.ts` (unused)
+  - `hooks/useToast.ts`, `hooks/useToast.tsx` (unused)
+  - `components/auth/SignOutButton.tsx` (unused)
+  - `components/ui/CurrentTesterBadge.tsx`, `Toast.tsx`, `Badge.tsx` (unused)
+  - `supabase/migrations/SUPABASE_SETUP_SIMPLE.sql` (duplicate)
+  - `supabase/migrations/MIGRATION_ADD_TAGS_CREATED_BY.sql` (abandoned)
+  - `image/` folder (moved icon to /public)
+
+**Documentation Updates**:
+- ✅ Updated CLAUDE.md with accurate phase status (0-4 complete, 5-6 in progress)
+- ✅ Updated PROJECT_INFO.md with current features and folder structure
+- ✅ Updated STATUS.md with session 4 notes
+
+**Files Modified**:
+- `lib/services/checklistService.ts` - Fixed custom testcase/module display
+- `app/projects/[projectId]/edit/page.tsx` - Import feature, custom testcase handling
+- `components/checklists/ImportChecklistDialog.tsx` - NEW import dialog component
+- `app/layout.tsx` - Added icons metadata
+- `.claude/CLAUDE.md` - Updated phase status
+- `PROJECT_INFO.md` - Complete refresh
+- `STATUS.md` - Added session 4
+
+**Deployed to Production**: https://qa-checklist-automation.vercel.app/ ✅
 
 ---
 
