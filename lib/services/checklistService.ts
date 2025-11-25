@@ -890,7 +890,8 @@ export const checklistService = {
           updated_at,
           base_modules (
             name,
-            description
+            description,
+            thumbnail_url
           )
         `)
         .eq('project_id', projectId)
@@ -1035,6 +1036,7 @@ export const checklistService = {
           moduleId: module.module_id,
           moduleName: baseModule?.name || 'Unknown Module',
           moduleDescription: baseModule?.description,
+          moduleThumbnailUrl: baseModule?.thumbnail_url || undefined,
           instanceLabel: module.instance_label || undefined,
           instanceNumber: module.instance_number,
           orderIndex: module.order_index,

@@ -39,6 +39,9 @@ export default function WorkingModePage() {
   // Collapsed modules - stores module IDs that are collapsed
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
 
+  // Lightbox for module thumbnails
+  const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
+
   // Status filter for testcases
   const [statusFilter, setStatusFilter] = useState<TestStatus | 'All'>('All');
 
@@ -900,6 +903,21 @@ export default function WorkingModePage() {
                     )}
                   </div>
 
+                  {/* Module Thumbnail - Only show if exists */}
+                  {module.moduleThumbnailUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setLightboxImageUrl(module.moduleThumbnailUrl!)}
+                      className="flex-shrink-0 ml-2 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded"
+                    >
+                      <img
+                        src={module.moduleThumbnailUrl}
+                        alt={module.moduleName}
+                        className="w-10 h-10 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                      />
+                    </button>
+                  )}
+
                   {/* Collapse/Expand Button */}
                   <button
                     onClick={() => toggleModuleCollapse(module.id)}
@@ -1574,6 +1592,31 @@ export default function WorkingModePage() {
           </>
         )}
       </main>
+
+      {/* Lightbox for module thumbnails */}
+      {lightboxImageUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightboxImageUrl(null)}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 text-white hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded p-2"
+            onClick={() => setLightboxImageUrl(null)}
+            aria-label="Close"
+          >
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img
+            src={lightboxImageUrl}
+            alt="Module thumbnail"
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

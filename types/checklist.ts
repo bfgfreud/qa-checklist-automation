@@ -162,6 +162,7 @@ export interface ChecklistModuleWithMultiTesterResults {
   moduleId: string;
   moduleName: string;
   moduleDescription?: string;
+  moduleThumbnailUrl?: string; // Thumbnail from base_modules
   instanceLabel?: string;
   instanceNumber: number;
   orderIndex: number;
