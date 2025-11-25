@@ -1,11 +1,35 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Button } from '@/components/ui/Button';
 import { Module, CreateModuleDto, UpdateModuleDto } from '@/types/module';
+
+// Preset tags for Mobile Game QA Testing
+const PRESET_TAGS = [
+  'UI/UX',
+  'Gameplay',
+  'Performance',
+  'Localization',
+  'IAP',
+  'Social Features',
+  'Tutorial',
+  'Settings',
+  'Audio',
+  'Notifications',
+  'Analytics',
+  'Ads Integration',
+  'Cross-Platform',
+  'Multiplayer',
+  'Progression System',
+  'Monetization',
+  'Onboarding',
+  'Accessibility',
+  'Device Compatibility',
+  'Network/Connectivity',
+];
 
 export interface ModuleFormProps {
   isOpen: boolean;
@@ -22,8 +46,11 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
   });
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const [showTagDropdown, setShowTagDropdown] = useState(false);
+  const [customTagInput, setCustomTagInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const tagDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (module) {
@@ -40,6 +67,23 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
     setTagInput('');
     setErrors({});
   }, [module, isOpen]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tagDropdownRef.current && !tagDropdownRef.current.contains(event.target as Node)) {
+        setShowTagDropdown(false);
+      }
+    };
+
+    if (showTagDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTagDropdown]);
 
   // Generate consistent color from tag name (deterministic)
   const getTagColor = (tag: string): string => {
@@ -76,6 +120,14 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
 
     setTags([...tags, trimmedTag]);
     setTagInput('');
+  };
+
+  const toggleTag = (tag: string) => {
+    if (tags.includes(tag)) {
+      setTags(tags.filter(t => t !== tag));
+    } else {
+      setTags([...tags, tag]);
+    }
   };
 
   const removeTag = (index: number) => {
@@ -170,49 +222,99 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
           rows={3}
         />
 
-        {/* Tags Input */}
+        {/* Tags Multi-Select */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Tags (Optional)
+            Tags (Select multiple)
           </label>
-          <div className="space-y-2">
-            {/* Display existing tags as chips */}
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium"
-                    style={{ backgroundColor: getTagColor(tag), color: '#fff' }}
+
+          {/* Selected tags display */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {tags.map((tag, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium"
+                  style={{ backgroundColor: getTagColor(tag), color: '#fff' }}
+                >
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => removeTag(index)}
+                    className="hover:bg-black/20 rounded-full p-0.5 focus:outline-none focus:ring-2 focus:ring-white/50"
+                    aria-label={`Remove tag ${tag}`}
                   >
-                    {tag}
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Multi-select dropdown */}
+          <div className="relative" ref={tagDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setShowTagDropdown(!showTagDropdown)}
+              className="w-full px-3 py-2 bg-dark-elevated border border-dark-primary rounded-md text-left text-gray-200 flex items-center justify-between hover:border-primary-500 transition-colors"
+            >
+              <span className={tags.length > 0 ? 'text-gray-200' : 'text-gray-500'}>
+                {tags.length > 0 ? `${tags.length} tags selected` : 'Select tags...'}
+              </span>
+              <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+
+            {/* Dropdown menu */}
+            {showTagDropdown && (
+              <div className="absolute z-10 mt-1 w-full bg-dark-elevated border border-dark-border rounded-md shadow-lg max-h-60 overflow-auto">
+                {PRESET_TAGS.map((presetTag) => {
+                  const isSelected = tags.includes(presetTag);
+                  return (
                     <button
+                      key={presetTag}
                       type="button"
-                      onClick={() => removeTag(index)}
-                      className="hover:bg-black/20 rounded-full p-0.5 focus:outline-none focus:ring-2 focus:ring-white/50"
-                      aria-label={`Remove tag ${tag}`}
+                      onClick={() => toggleTag(presetTag)}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-dark-border transition-colors flex items-center gap-2 ${
+                        isSelected ? 'bg-primary-500/20 text-primary-400' : 'text-gray-300'
+                      }`}
                     >
-                      ✕
+                      <div className={`w-4 h-4 border rounded flex items-center justify-center flex-shrink-0 ${
+                        isSelected ? 'bg-primary-500 border-primary-500' : 'border-gray-600'
+                      }`}>
+                        {isSelected && (
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      {presetTag}
                     </button>
-                  </span>
-                ))}
+                  );
+                })}
+
+                {/* Custom tag option */}
+                <div className="border-t border-dark-border p-2">
+                  <input
+                    type="text"
+                    placeholder="Add custom tag..."
+                    value={customTagInput}
+                    onChange={(e) => setCustomTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && customTagInput.trim()) {
+                        e.preventDefault();
+                        addTag(customTagInput.trim());
+                        setCustomTagInput('');
+                      }
+                    }}
+                    className="w-full px-2 py-1 bg-dark-bg border border-dark-border rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-primary-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Press Enter to add custom tag</p>
+                </div>
               </div>
             )}
-
-            {/* Input for new tag */}
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={handleTagKeyDown}
-              placeholder="Add tags (press Enter or comma)"
-              className="w-full px-3 py-2 bg-dark-elevated border border-dark-primary rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:border-primary-500"
-              aria-label="Add new tag"
-            />
           </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Press Enter or comma to add tags. Click × to remove.
-          </p>
         </div>
 
         {errors.submit && <p className="text-sm text-red-500">{errors.submit}</p>}
