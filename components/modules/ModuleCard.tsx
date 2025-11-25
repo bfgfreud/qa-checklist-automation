@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
@@ -48,6 +48,7 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
 
   const moduleIsModified = isModified?.(module) || false;
   const isNewModule = module.id.startsWith('temp-');
+  const [showLightbox, setShowLightbox] = useState(false);
 
   // Generate consistent color from tag name (deterministic)
   const getTagColor = (tag: string): string => {
@@ -111,13 +112,19 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
 
         {/* Thumbnail */}
         {module.thumbnailUrl ? (
-          <img
-            src={module.thumbnailUrl}
-            alt={module.name}
-            className={`rounded object-cover flex-shrink-0 ${
-              isCompact ? 'w-10 h-10' : 'w-14 h-14'
-            }`}
-          />
+          <button
+            type="button"
+            onClick={() => setShowLightbox(true)}
+            className="focus:outline-none focus:ring-2 focus:ring-primary-500 rounded"
+          >
+            <img
+              src={module.thumbnailUrl}
+              alt={module.name}
+              className={`rounded object-cover flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity ${
+                isCompact ? 'w-10 h-10' : 'w-14 h-14'
+              }`}
+            />
+          </button>
         ) : (
           <div className={`rounded bg-dark-elevated flex items-center justify-center flex-shrink-0 ${
             isCompact ? 'w-10 h-10' : 'w-14 h-14'
@@ -237,6 +244,31 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
           )}
         </div>
       </div>
+
+      {/* Lightbox for full image view */}
+      {showLightbox && module.thumbnailUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setShowLightbox(false)}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 text-white hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded p-2"
+            onClick={() => setShowLightbox(false)}
+            aria-label="Close"
+          >
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img
+            src={module.thumbnailUrl}
+            alt={module.name}
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 };

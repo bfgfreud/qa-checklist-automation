@@ -9,7 +9,7 @@ interface ThumbnailUploadProps {
 }
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export const ThumbnailUpload: React.FC<ThumbnailUploadProps> = ({
   value,
@@ -26,7 +26,7 @@ export const ThumbnailUpload: React.FC<ThumbnailUploadProps> = ({
       return 'Please upload a JPEG, PNG, GIF, or WebP image';
     }
     if (file.size > MAX_FILE_SIZE) {
-      return 'File size must be less than 2MB';
+      return 'File size must be less than 10MB';
     }
     return null;
   };
@@ -151,7 +151,7 @@ export const ThumbnailUpload: React.FC<ThumbnailUploadProps> = ({
             {value ? 'Click to change' : 'Click or drag to upload'}
           </p>
           <p className="text-xs text-gray-500">
-            JPEG, PNG, GIF, WebP (max 2MB)
+            JPEG, PNG, GIF, WebP (max 10MB)
           </p>
           {value && (
             <button

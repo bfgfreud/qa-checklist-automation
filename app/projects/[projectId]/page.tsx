@@ -222,7 +222,18 @@ export default function ProjectOverviewPage() {
           <h3 className="text-lg font-semibold text-white mb-4">Overall Progress</h3>
           <div className="flex items-center gap-4 mb-4">
             <div className="flex-1">
-              <ProgressBar value={stats.progress} max={100} size="lg" showLabel={false} />
+              <ProgressBar
+                value={stats.progress}
+                max={100}
+                size="lg"
+                showLabel={false}
+                segments={{
+                  passed: stats.passed,
+                  failed: stats.failed,
+                  skipped: stats.skipped,
+                  total: stats.total
+                }}
+              />
             </div>
             <div className="text-3xl font-bold text-primary-500">{stats.progress}%</div>
           </div>
@@ -341,7 +352,18 @@ export default function ProjectOverviewPage() {
 
                         {/* Progress */}
                         <div className="w-32">
-                          <ProgressBar value={moduleProgress} max={100} size="sm" showLabel={false} />
+                          <ProgressBar
+                            value={moduleProgress}
+                            max={100}
+                            size="sm"
+                            showLabel={false}
+                            segments={{
+                              passed: passedTests,
+                              failed: failedTests,
+                              skipped: skippedTests,
+                              total: totalTests
+                            }}
+                          />
                         </div>
 
                         {/* Expand Icon */}
