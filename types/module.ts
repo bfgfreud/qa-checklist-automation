@@ -19,7 +19,8 @@ export interface Module {
   id: string;
   name: string;
   description?: string;
-  icon?: string;
+  thumbnailUrl?: string;      // Optional 64x64 thumbnail image
+  thumbnailFileName?: string; // Original filename for the thumbnail
   tags?: string[]; // Multi-tag support, stored as JSONB in database
   createdBy?: string; // User ID/email for future auth integration
   order: number;
@@ -31,7 +32,8 @@ export interface Module {
 export interface CreateModuleDto {
   name: string;
   description?: string;
-  icon?: string;
+  thumbnailUrl?: string;
+  thumbnailFileName?: string;
   tags?: string[];
   createdBy?: string; // Auto-populated on backend
 }
@@ -39,7 +41,8 @@ export interface CreateModuleDto {
 export interface UpdateModuleDto {
   name?: string;
   description?: string;
-  icon?: string;
+  thumbnailUrl?: string;
+  thumbnailFileName?: string;
   tags?: string[];
 }
 

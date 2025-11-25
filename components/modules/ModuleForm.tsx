@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Button } from '@/components/ui/Button';
+import { ThumbnailUpload } from './ThumbnailUpload';
 import { Module, CreateModuleDto, UpdateModuleDto } from '@/types/module';
 
 // Preset tags for Mobile Game QA Testing
@@ -29,6 +30,8 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
     name: '',
     description: '',
   });
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [thumbnailFileName, setThumbnailFileName] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [showTagDropdown, setShowTagDropdown] = useState(false);
@@ -45,9 +48,13 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
         name: module.name,
         description: module.description || '',
       });
+      setThumbnailUrl(module.thumbnailUrl || null);
+      setThumbnailFileName(module.thumbnailFileName || null);
       setTags(module.tags || []);
     } else {
       setFormData({ name: '', description: '' });
+      setThumbnailUrl(null);
+      setThumbnailFileName(null);
       setTags([]);
     }
     setTagInput('');
@@ -165,6 +172,8 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
       await onSubmit({
         name: formData.name,
         description: formData.description,
+        thumbnailUrl: thumbnailUrl || undefined,
+        thumbnailFileName: thumbnailFileName || undefined,
         tags: tags,
       });
       onClose();
@@ -209,6 +218,16 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           placeholder="Brief description of this module..."
           rows={3}
+        />
+
+        {/* Thumbnail Upload */}
+        <ThumbnailUpload
+          value={thumbnailUrl || undefined}
+          onChange={(url, fileName) => {
+            setThumbnailUrl(url);
+            setThumbnailFileName(fileName);
+          }}
+          moduleId={module?.id}
         />
 
         {/* Tags Multi-Select */}

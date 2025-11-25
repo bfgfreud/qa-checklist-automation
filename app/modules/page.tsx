@@ -105,6 +105,8 @@ export default function ModulesPage() {
           id: mod.id,
           name: mod.name,
           description: mod.description,
+          thumbnailUrl: mod.thumbnail_url as string | undefined,
+          thumbnailFileName: mod.thumbnail_file_name as string | undefined,
           tags: Array.isArray(mod.tags) ? mod.tags : [], // Transform tags
           order: mod.order_index,
           createdAt: mod.created_at,
@@ -210,6 +212,8 @@ export default function ModulesPage() {
       id: tempId,
       name: moduleName,
       description: data.description,
+      thumbnailUrl: (data as CreateModuleDto).thumbnailUrl,
+      thumbnailFileName: (data as CreateModuleDto).thumbnailFileName,
       tags: (data as CreateModuleDto).tags || [],
       order: draftModules.length,
       testCases: [],
@@ -248,6 +252,8 @@ export default function ModulesPage() {
               ...m,
               name: newName,
               description: data.description !== undefined ? data.description : m.description,
+              thumbnailUrl: (data as UpdateModuleDto).thumbnailUrl !== undefined ? (data as UpdateModuleDto).thumbnailUrl : m.thumbnailUrl,
+              thumbnailFileName: (data as UpdateModuleDto).thumbnailFileName !== undefined ? (data as UpdateModuleDto).thumbnailFileName : m.thumbnailFileName,
               tags: (data as UpdateModuleDto).tags !== undefined ? (data as UpdateModuleDto).tags : m.tags,
               updatedAt: new Date().toISOString(),
             }
@@ -383,9 +389,13 @@ export default function ModulesPage() {
         if (serverModule) {
           // Check if content was updated
           const tagsChanged = JSON.stringify(dm.tags || []) !== JSON.stringify(serverModule.tags || []);
+          const thumbnailChanged =
+            dm.thumbnailUrl !== serverModule.thumbnailUrl ||
+            dm.thumbnailFileName !== serverModule.thumbnailFileName;
           const contentChanged =
             dm.name !== serverModule.name ||
             dm.description !== serverModule.description ||
+            thumbnailChanged ||
             tagsChanged;
 
           if (contentChanged) {
@@ -482,6 +492,8 @@ export default function ModulesPage() {
             body: JSON.stringify({
               name: newModule.name,
               description: newModule.description,
+              thumbnail_url: newModule.thumbnailUrl,
+              thumbnail_file_name: newModule.thumbnailFileName,
               order_index: newModule.order,
               tags: newModule.tags || [],
             }),
@@ -524,6 +536,8 @@ export default function ModulesPage() {
             body: JSON.stringify({
               name: updatedModule.name,
               description: updatedModule.description,
+              thumbnail_url: updatedModule.thumbnailUrl,
+              thumbnail_file_name: updatedModule.thumbnailFileName,
               tags: updatedModule.tags || [],
             }),
           });
@@ -689,10 +703,14 @@ export default function ModulesPage() {
       const serverModule = modules.find((m) => m.id === item.id);
       if (!serverModule) return false;
       const tagsChanged = JSON.stringify(item.tags || []) !== JSON.stringify(serverModule.tags || []);
+      const thumbnailChanged =
+        item.thumbnailUrl !== serverModule.thumbnailUrl ||
+        item.thumbnailFileName !== serverModule.thumbnailFileName;
       return (
         item.name !== serverModule.name ||
         item.description !== serverModule.description ||
         item.order !== serverModule.order ||
+        thumbnailChanged ||
         tagsChanged
       );
     } else {

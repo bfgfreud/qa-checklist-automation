@@ -27,7 +27,7 @@ export const moduleService = {
     try {
       const { data: modules, error: modulesError } = await supabase
         .from('base_modules')
-        .select('id, name, description, order_index, tags, created_by, created_at, updated_at')
+        .select('id, name, description, thumbnail_url, thumbnail_file_name, order_index, tags, created_by, created_at, updated_at')
         .order('order_index', { ascending: true })
 
       if (modulesError) {
@@ -90,7 +90,7 @@ export const moduleService = {
     try {
       const { data: module, error: moduleError } = await supabase
         .from('base_modules')
-        .select('id, name, description, order_index, tags, created_by, created_at, updated_at')
+        .select('id, name, description, thumbnail_url, thumbnail_file_name, order_index, tags, created_by, created_at, updated_at')
         .eq('id', id)
         .single()
 
@@ -156,11 +156,13 @@ export const moduleService = {
         .insert([{
           name: input.name,
           description: input.description || null,
+          thumbnail_url: input.thumbnail_url || null,
+          thumbnail_file_name: input.thumbnail_file_name || null,
           order_index: input.order_index ?? nextOrderIndex,
           tags: JSON.stringify(input.tags || []),
           created_by: input.createdBy || null
         }])
-        .select('id, name, description, order_index, tags, created_by, created_at, updated_at')
+        .select('id, name, description, thumbnail_url, thumbnail_file_name, order_index, tags, created_by, created_at, updated_at')
         .single()
 
       if (error) {
@@ -192,6 +194,8 @@ export const moduleService = {
       const updateData: Partial<Record<string, any>> = {}
       if (input.name !== undefined) updateData.name = input.name
       if (input.description !== undefined) updateData.description = input.description
+      if (input.thumbnail_url !== undefined) updateData.thumbnail_url = input.thumbnail_url
+      if (input.thumbnail_file_name !== undefined) updateData.thumbnail_file_name = input.thumbnail_file_name
       if (input.order_index !== undefined) updateData.order_index = input.order_index
       if (input.tags !== undefined) updateData.tags = JSON.stringify(input.tags)
 
@@ -199,7 +203,7 @@ export const moduleService = {
         .from('base_modules')
         .update(updateData)
         .eq('id', id)
-        .select('id, name, description, order_index, tags, created_by, created_at, updated_at')
+        .select('id, name, description, thumbnail_url, thumbnail_file_name, order_index, tags, created_by, created_at, updated_at')
         .single()
 
       if (error || !data) {

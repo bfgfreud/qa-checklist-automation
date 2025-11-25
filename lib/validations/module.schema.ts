@@ -14,6 +14,14 @@ export const createModuleSchema = z.object({
     .trim()
     .optional()
     .nullable(),
+  thumbnail_url: z.string()
+    .url('Invalid thumbnail URL')
+    .optional()
+    .nullable(),
+  thumbnail_file_name: z.string()
+    .max(255, 'Thumbnail file name must be less than 255 characters')
+    .optional()
+    .nullable(),
   order_index: z.number()
     .int()
     .min(0)
@@ -36,6 +44,14 @@ export const updateModuleSchema = z.object({
   description: z.string()
     .max(1000, 'Description must be less than 1000 characters')
     .trim()
+    .optional()
+    .nullable(),
+  thumbnail_url: z.string()
+    .url('Invalid thumbnail URL')
+    .optional()
+    .nullable(),
+  thumbnail_file_name: z.string()
+    .max(255, 'Thumbnail file name must be less than 255 characters')
     .optional()
     .nullable(),
   order_index: z.number()
