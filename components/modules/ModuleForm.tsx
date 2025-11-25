@@ -28,7 +28,6 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
   const [formData, setFormData] = useState<CreateModuleDto>({
     name: '',
     description: '',
-    icon: '',
   });
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
@@ -45,11 +44,10 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
       setFormData({
         name: module.name,
         description: module.description || '',
-        icon: module.icon || '',
       });
       setTags(module.tags || []);
     } else {
-      setFormData({ name: '', description: '', icon: '' });
+      setFormData({ name: '', description: '' });
       setTags([]);
     }
     setTagInput('');
@@ -167,7 +165,6 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
       await onSubmit({
         name: formData.name,
         description: formData.description,
-        icon: formData.icon,
         tags: tags,
       });
       onClose();
@@ -204,14 +201,6 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
           error={errors.name}
           placeholder="e.g., Sign In"
           autoFocus
-        />
-
-        <Input
-          label="Icon (Emoji)"
-          value={formData.icon}
-          onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-          placeholder="e.g., 🔐"
-          maxLength={2}
         />
 
         <Textarea

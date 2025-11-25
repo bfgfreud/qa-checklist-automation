@@ -105,7 +105,6 @@ export default function ModulesPage() {
           id: mod.id,
           name: mod.name,
           description: mod.description,
-          icon: mod.icon || '📦', // default icon if not provided
           tags: Array.isArray(mod.tags) ? mod.tags : [], // Transform tags
           order: mod.order_index,
           createdAt: mod.created_at,
@@ -211,8 +210,7 @@ export default function ModulesPage() {
       id: tempId,
       name: moduleName,
       description: data.description,
-      icon: (data as CreateModuleDto).icon || '📦',
-      tags: (data as CreateModuleDto).tags || [], // Add tags
+      tags: (data as CreateModuleDto).tags || [],
       order: draftModules.length,
       testCases: [],
       createdAt: new Date().toISOString(),
@@ -250,8 +248,7 @@ export default function ModulesPage() {
               ...m,
               name: newName,
               description: data.description !== undefined ? data.description : m.description,
-              icon: (data as UpdateModuleDto).icon || m.icon,
-              tags: (data as UpdateModuleDto).tags !== undefined ? (data as UpdateModuleDto).tags : m.tags, // Update tags
+              tags: (data as UpdateModuleDto).tags !== undefined ? (data as UpdateModuleDto).tags : m.tags,
               updatedAt: new Date().toISOString(),
             }
           : m
@@ -389,7 +386,6 @@ export default function ModulesPage() {
           const contentChanged =
             dm.name !== serverModule.name ||
             dm.description !== serverModule.description ||
-            dm.icon !== serverModule.icon ||
             tagsChanged;
 
           if (contentChanged) {
@@ -486,9 +482,8 @@ export default function ModulesPage() {
             body: JSON.stringify({
               name: newModule.name,
               description: newModule.description,
-              icon: newModule.icon,
               order_index: newModule.order,
-              tags: newModule.tags || [], // Include tags
+              tags: newModule.tags || [],
             }),
           });
           const result = await response.json();
@@ -529,8 +524,7 @@ export default function ModulesPage() {
             body: JSON.stringify({
               name: updatedModule.name,
               description: updatedModule.description,
-              icon: updatedModule.icon,
-              tags: updatedModule.tags || [], // Include tags
+              tags: updatedModule.tags || [],
             }),
           });
           const result = await response.json();
@@ -698,7 +692,6 @@ export default function ModulesPage() {
       return (
         item.name !== serverModule.name ||
         item.description !== serverModule.description ||
-        item.icon !== serverModule.icon ||
         item.order !== serverModule.order ||
         tagsChanged
       );
@@ -779,7 +772,6 @@ export default function ModulesPage() {
     const headers = [
       'Module Name',
       'Module Description',
-      'Module Icon',
       'Module Tags',
       'Test Case Title',
       'Test Case Description',
@@ -795,7 +787,6 @@ export default function ModulesPage() {
         rows.push([
           module.name,
           module.description || '',
-          module.icon || '📦',
           module.tags?.join(',') || '',
           '',
           '',
@@ -807,7 +798,6 @@ export default function ModulesPage() {
           rows.push([
             module.name,
             module.description || '',
-            module.icon || '📦',
             module.tags?.join(',') || '',
             tc.title,
             tc.description || '',
@@ -921,7 +911,7 @@ export default function ModulesPage() {
         const moduleMap = new Map<string, { module: Partial<Module>; testCases: Partial<TestCase>[] }>();
 
         dataRows.forEach(row => {
-          const [moduleName, moduleDesc, moduleIcon, moduleTags, tcTitle, tcDesc, tcPriority] = row;
+          const [moduleName, moduleDesc, moduleTags, tcTitle, tcDesc, tcPriority] = row;
 
           if (!moduleName) return; // Skip empty rows
 
@@ -930,7 +920,6 @@ export default function ModulesPage() {
               module: {
                 name: moduleName,
                 description: moduleDesc || undefined,
-                icon: moduleIcon || '📦',
                 tags: moduleTags ? moduleTags.split(',').map(t => t.trim()).filter(Boolean) : [],
               },
               testCases: []
@@ -977,7 +966,6 @@ export default function ModulesPage() {
             const updatedModule: Module = {
               ...existingModule,
               description: data.module.description !== undefined ? data.module.description : existingModule.description,
-              icon: data.module.icon || existingModule.icon,
               tags: data.module.tags || existingModule.tags,
               testCases: testCases,
             };
@@ -990,7 +978,6 @@ export default function ModulesPage() {
               id: `temp-module-${Date.now()}-${newModules.length}`,
               name: data.module.name!,
               description: data.module.description,
-              icon: data.module.icon || '📦',
               tags: data.module.tags || [],
               order: draftModules.length + newModules.length,
               testCases: testCases,
@@ -1216,7 +1203,7 @@ export default function ModulesPage() {
           /* Modules List */
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={filteredModules.map((m) => m.id)} strategy={verticalListSortingStrategy}>
-              <div className={viewMode === 'compact' ? 'space-y-3' : 'space-y-6'}>
+              <div className={viewMode === 'compact' ? 'space-y-2' : 'space-y-3'}>
                 {filteredModules.map((module) => (
                   <ModuleCard
                     key={module.id}
@@ -1364,7 +1351,7 @@ export default function ModulesPage() {
                   <div className="space-y-2">
                     {importPreview.newModules.map(module => (
                       <div key={module.id} className="bg-dark-elevated p-3 rounded border border-green-500/30">
-                        <div className="font-medium text-white">{module.icon} {module.name}</div>
+                        <div className="font-medium text-white">{module.name}</div>
                         <div className="text-sm text-gray-400 mt-1">{module.testCases.length} test cases</div>
                       </div>
                     ))}
@@ -1379,7 +1366,7 @@ export default function ModulesPage() {
                   <div className="space-y-2">
                     {importPreview.updatedModules.map(({ old, new: updated }) => (
                       <div key={old.id} className="bg-dark-elevated p-3 rounded border border-blue-500/30">
-                        <div className="font-medium text-white">{updated.icon} {updated.name}</div>
+                        <div className="font-medium text-white">{updated.name}</div>
                         <div className="text-sm text-gray-400 mt-1">
                           {old.testCases.length} → {updated.testCases.length} test cases
                         </div>

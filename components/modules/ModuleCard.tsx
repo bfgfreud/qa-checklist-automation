@@ -87,19 +87,19 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
       ref={setNodeRef}
       style={style}
       className={`bg-dark-secondary border rounded-lg hover:border-primary-500 transition-all ${
-        isCompact ? 'p-3' : 'p-6'
+        isCompact ? 'p-2' : 'p-3'
       } ${moduleIsModified ? 'border-orange-500' : 'border-dark-primary'}`}
     >
       {/* Module Header */}
-      <div className={`flex items-start ${isCompact ? 'gap-2' : 'gap-4'}`}>
+      <div className={`flex items-start ${isCompact ? 'gap-1.5' : 'gap-2'}`}>
         {/* Drag Handle */}
         <button
           {...attributes}
           {...listeners}
-          className="mt-1 cursor-grab active:cursor-grabbing text-gray-500 hover:text-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded p-1"
+          className="mt-0.5 cursor-grab active:cursor-grabbing text-gray-500 hover:text-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded p-0.5"
           aria-label="Drag to reorder module"
         >
-          <svg className={isCompact ? 'w-4 h-4' : 'w-6 h-6'} viewBox="0 0 24 24" fill="currentColor">
+          <svg className={isCompact ? 'w-3.5 h-3.5' : 'w-4 h-4'} viewBox="0 0 24 24" fill="currentColor">
             <circle cx="8" cy="5" r="1.5" />
             <circle cx="8" cy="12" r="1.5" />
             <circle cx="8" cy="19" r="1.5" />
@@ -111,44 +111,43 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
 
         {/* Module Info */}
         <div className="flex-1 min-w-0">
-          <div className={`flex items-start justify-between ${isCompact ? 'mb-1' : 'mb-2'}`}>
+          <div className={`flex items-start justify-between ${isCompact ? 'mb-0.5' : 'mb-1'}`}>
             <div className="flex-1 min-w-0">
-              <h3 className={`font-bold text-white flex items-center gap-2 ${isCompact ? 'text-base' : 'text-xl'}`}>
-                {module.icon && <span className={isCompact ? 'text-base' : ''}>{module.icon}</span>}
+              <h3 className={`font-bold text-white flex items-center gap-2 ${isCompact ? 'text-sm' : 'text-base'}`}>
                 <span className="truncate">{module.name}</span>
                 {moduleIsModified && (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 bg-orange-500/20 text-orange-400 rounded-full flex-shrink-0">
-                    <div className="w-1.5 h-1.5 bg-orange-500 rounded-full"></div>
+                  <span className="inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded-full flex-shrink-0">
+                    <div className="w-1 h-1 bg-orange-500 rounded-full"></div>
                     {isNewModule ? 'New' : 'Edited'}
                   </span>
                 )}
               </h3>
               {/* Description - hidden in compact mode */}
               {!isCompact && module.description && (
-                <p className="text-gray-400 text-sm mt-1">{module.description}</p>
+                <p className="text-gray-400 text-xs mt-0.5">{module.description}</p>
               )}
 
               {/* Tags display - limited in compact mode */}
               {displayTags.length > 0 && (
-                <div className={`flex flex-wrap gap-1.5 ${isCompact ? 'mt-1' : 'mt-3'}`}>
+                <div className={`flex flex-wrap gap-1 ${isCompact ? 'mt-0.5' : 'mt-1.5'}`}>
                   {displayTags.map((tag, index) => (
                     <span
                       key={index}
-                      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                      className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium"
                       style={{ backgroundColor: getTagColor(tag), color: '#fff' }}
                     >
                       {tag}
                     </span>
                   ))}
                   {hiddenTagsCount > 0 && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-600 text-gray-300">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-600 text-gray-300">
                       +{hiddenTagsCount} more
                     </span>
                   )}
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1 flex-shrink-0">
               <Button variant="ghost" size="sm" onClick={() => onEdit(module)}>
                 Edit
               </Button>
@@ -159,19 +158,19 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
           </div>
 
           {/* Test Case Count */}
-          <div className={`flex items-center justify-between ${isCompact ? 'mb-2' : 'mb-3'}`}>
-            <p className="text-sm text-gray-400">
+          <div className={`flex items-center justify-between ${isCompact ? 'mb-1' : 'mb-1.5'}`}>
+            <p className="text-xs text-gray-400">
               {module.testCases.length} test case{module.testCases.length !== 1 ? 's' : ''}
             </p>
             <button
               onClick={onToggleExpand}
-              className="text-sm text-primary-500 hover:text-primary-400 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-2 py-1 transition-colors"
+              className="text-xs text-primary-500 hover:text-primary-400 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-1.5 py-0.5 transition-colors"
               aria-expanded={isExpanded}
               aria-label={isExpanded ? 'Collapse test cases' : 'Expand test cases'}
             >
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-0.5">
                 <svg
-                  className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                  className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
                   fill="currentColor"
                   viewBox="0 0 20 20"
                   aria-hidden="true"
@@ -182,14 +181,14 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
                     clipRule="evenodd"
                   />
                 </svg>
-                {isExpanded ? 'Hide' : 'Show'} Test Cases
+                {isExpanded ? 'Hide' : 'Show'}
               </span>
             </button>
           </div>
 
           {/* Test Cases List */}
           {isExpanded && (
-            <div className={isCompact ? 'space-y-2' : 'space-y-3'}>
+            <div className={isCompact ? 'space-y-1' : 'space-y-1.5'}>
               <SortableContext
                 items={module.testCases.map((tc) => tc.id)}
                 strategy={verticalListSortingStrategy}
@@ -201,6 +200,7 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
                     onEdit={onEditTestCase}
                     onDelete={onDeleteTestCase}
                     isModified={isModified}
+                    viewMode={viewMode}
                   />
                 ))}
               </SortableContext>
