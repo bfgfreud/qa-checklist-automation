@@ -50,7 +50,9 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
   const [customTagInput, setCustomTagInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
   const tagDropdownRef = useRef<HTMLDivElement>(null);
+  const tagButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (module) {
@@ -266,8 +268,19 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
           {/* Multi-select dropdown */}
           <div className="relative" ref={tagDropdownRef}>
             <button
+              ref={tagButtonRef}
               type="button"
-              onClick={() => setShowTagDropdown(!showTagDropdown)}
+              onClick={() => {
+                if (!showTagDropdown && tagButtonRef.current) {
+                  const rect = tagButtonRef.current.getBoundingClientRect();
+                  setDropdownPosition({
+                    top: rect.bottom + 4,
+                    left: rect.left,
+                    width: rect.width
+                  });
+                }
+                setShowTagDropdown(!showTagDropdown);
+              }}
               className="w-full px-3 py-2 bg-dark-elevated border border-dark-primary rounded-md text-left text-gray-200 flex items-center justify-between hover:border-primary-500 transition-colors"
             >
               <span className={tags.length > 0 ? 'text-gray-200' : 'text-gray-500'}>
@@ -278,9 +291,16 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
               </svg>
             </button>
 
-            {/* Dropdown menu */}
-            {showTagDropdown && (
-              <div className="absolute z-10 mt-1 w-full bg-dark-elevated border border-dark-border rounded-md shadow-lg max-h-60 overflow-auto">
+            {/* Dropdown menu - fixed positioning to avoid modal scrollbar */}
+            {showTagDropdown && dropdownPosition && (
+              <div
+                className="fixed z-50 bg-dark-elevated border border-dark-border rounded-md shadow-lg max-h-60 overflow-auto"
+                style={{
+                  top: dropdownPosition.top,
+                  left: dropdownPosition.left,
+                  width: dropdownPosition.width
+                }}
+              >
                 {PRESET_TAGS.map((presetTag) => {
                   const isSelected = tags.includes(presetTag);
                   return (
