@@ -869,20 +869,24 @@ export default function ProjectEditPage() {
         orderIndex: draftModules.filter(m => !m._isDeleted).length + newDraftModules.length,
         _isDraft: true,
         _isCustom: isSourceCustom,
-        testResults: srcModule.testCases.map((tc, idx) => ({
-          id: `draft-import-tc-${Date.now()}-${idx}`,
-          projectChecklistModuleId: `draft-import-${Date.now()}`,
-          testcaseId: tc.testcaseId || `custom-tc-${Date.now()}-${idx}`,
-          testcaseTitle: tc.title,
-          testcaseDescription: tc.description,
-          testcasePriority: tc.priority,
-          status: 'Pending' as const,  // Fresh start
-          notes: undefined,            // No notes copied
-          testedBy: undefined,
-          testedAt: undefined,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        })),
+        testResults: srcModule.testCases.map((tc, idx) => {
+          // Check if testcaseId indicates a custom testcase (null, or starts with 'custom:')
+          const isCustomTestcase = !tc.testcaseId || tc.testcaseId.startsWith('custom:');
+          return {
+            id: `draft-import-tc-${Date.now()}-${idx}`,
+            projectChecklistModuleId: `draft-import-${Date.now()}`,
+            testcaseId: isCustomTestcase ? `custom-tc-${Date.now()}-${idx}` : tc.testcaseId!,
+            testcaseTitle: tc.title,
+            testcaseDescription: tc.description,
+            testcasePriority: tc.priority,
+            status: 'Pending' as const,  // Fresh start
+            notes: undefined,            // No notes copied
+            testedBy: undefined,
+            testedAt: undefined,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+        }),
         // Stats will be calculated
         totalTests: srcModule.testCases.length,
         pendingTests: srcModule.testCases.length,

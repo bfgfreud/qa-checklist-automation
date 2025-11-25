@@ -876,13 +876,16 @@ export const checklistService = {
       }
       const assignedTesters = testersResult.data || []
 
-      // Get all checklist modules for this project
+      // Get all checklist modules for this project (include copied data for custom modules)
       const { data: checklistModules, error: modulesError } = await supabase
         .from('project_checklist_modules')
         .select(`
           id,
           project_id,
           module_id,
+          module_name,
+          module_description,
+          is_custom,
           instance_label,
           instance_number,
           order_index,
@@ -902,13 +905,17 @@ export const checklistService = {
         return { success: false, error: 'Failed to fetch checklist modules' }
       }
 
-      // Get all test results with testers and testcases
+      // Get all test results with testers and testcases (include copied data for custom testcases)
       const { data: testResults, error: resultsError } = await supabase
         .from('checklist_test_results')
         .select(`
           id,
           project_checklist_module_id,
           testcase_id,
+          testcase_title,
+          testcase_description,
+          testcase_priority,
+          is_custom,
           tester_id,
           status,
           notes,
@@ -965,13 +972,15 @@ export const checklistService = {
           r => r.project_checklist_module_id === module.id
         )
 
-        // Group by test case ID
+        // Group by test case ID (or testcase_title for custom testcases with null ID)
         const resultsByTestCase: Record<string, any[]> = {}
         moduleResults.forEach(result => {
-          if (!resultsByTestCase[result.testcase_id]) {
-            resultsByTestCase[result.testcase_id] = []
+          // Use testcase_id if available, otherwise use testcase_title for custom testcases
+          const groupKey = result.testcase_id || `custom:${result.testcase_title}`
+          if (!resultsByTestCase[groupKey]) {
+            resultsByTestCase[groupKey] = []
           }
-          resultsByTestCase[result.testcase_id].push(result)
+          resultsByTestCase[groupKey].push(result)
         })
 
         // Build test cases with results
@@ -1009,12 +1018,15 @@ export const checklistService = {
             const statuses = testerResults.map(r => r.status)
             const overallStatus = getWeakestStatus(statuses)
 
+            // For custom testcases, use the copied data stored in checklist_test_results
+            const isCustom = firstResult.is_custom || !testcase
+
             return {
               testCase: {
                 id: testcase?.id || testcaseId,
-                title: testcase?.title || 'Unknown',
-                description: testcase?.description,
-                priority: (testcase?.priority || 'Medium') as 'High' | 'Medium' | 'Low'
+                title: isCustom ? (firstResult.testcase_title || 'Unknown') : (testcase?.title || 'Unknown'),
+                description: isCustom ? firstResult.testcase_description : testcase?.description,
+                priority: (isCustom ? (firstResult.testcase_priority || 'Medium') : (testcase?.priority || 'Medium')) as 'High' | 'Medium' | 'Low'
               },
               results: testerResults.map((r: any) => {
                 const { _displayOrder, ...rest } = r;
@@ -1030,12 +1042,15 @@ export const checklistService = {
           })
           .map(({ _displayOrder, ...testCase }) => testCase) // Remove temp sorting field
 
+        // For custom modules, use the copied data stored in project_checklist_modules
+        const isCustomModule = module.is_custom || !baseModule
+
         return {
           id: module.id,
           projectId: module.project_id,
           moduleId: module.module_id,
-          moduleName: baseModule?.name || 'Unknown Module',
-          moduleDescription: baseModule?.description,
+          moduleName: isCustomModule ? (module.module_name || 'Unknown Module') : (baseModule?.name || 'Unknown Module'),
+          moduleDescription: isCustomModule ? module.module_description : baseModule?.description,
           moduleThumbnailUrl: baseModule?.thumbnail_url || undefined,
           instanceLabel: module.instance_label || undefined,
           instanceNumber: module.instance_number,
