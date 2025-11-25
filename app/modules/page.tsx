@@ -40,6 +40,7 @@ export default function ModulesPage() {
   // UI state for expand/collapse and search
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'compact' | 'big'>('big');
 
   // CSV Import state
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -1063,6 +1064,28 @@ export default function ModulesPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-1 bg-dark-elevated rounded-lg p-1 border border-dark-primary">
+              <button
+                onClick={() => setViewMode('compact')}
+                className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                  viewMode === 'compact' ? 'bg-primary-500 text-white' : 'text-gray-400 hover:text-gray-200'
+                }`}
+                aria-label="Compact view"
+              >
+                Compact
+              </button>
+              <button
+                onClick={() => setViewMode('big')}
+                className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                  viewMode === 'big' ? 'bg-primary-500 text-white' : 'text-gray-400 hover:text-gray-200'
+                }`}
+                aria-label="Big view"
+              >
+                Big
+              </button>
+            </div>
+
             {/* Hidden file input */}
             <input
               type="file"
@@ -1193,11 +1216,12 @@ export default function ModulesPage() {
           /* Modules List */
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={filteredModules.map((m) => m.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-6">
+              <div className={viewMode === 'compact' ? 'space-y-3' : 'space-y-6'}>
                 {filteredModules.map((module) => (
                   <ModuleCard
                     key={module.id}
                     module={module}
+                    viewMode={viewMode}
                     onEdit={(m) => {
                       setEditingModule(m);
                       setIsModuleFormOpen(true);

@@ -12,23 +12,9 @@ const PRESET_TAGS = [
   'UI/UX',
   'Gameplay',
   'Performance',
-  'Localization',
   'IAP',
-  'Social Features',
-  'Tutorial',
-  'Settings',
-  'Audio',
-  'Notifications',
-  'Analytics',
-  'Ads Integration',
-  'Cross-Platform',
   'Multiplayer',
-  'Progression System',
-  'Monetization',
-  'Onboarding',
-  'Accessibility',
-  'Device Compatibility',
-  'Network/Connectivity',
+  'Localization',
 ];
 
 export interface ModuleFormProps {
@@ -301,6 +287,30 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
                   width: dropdownPosition.width
                 }}
               >
+                {/* Custom tag input - at top for quick access */}
+                <div className="p-2">
+                  <input
+                    type="text"
+                    placeholder="Search or add custom tag..."
+                    value={customTagInput}
+                    onChange={(e) => setCustomTagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && customTagInput.trim()) {
+                        e.preventDefault();
+                        addTag(customTagInput.trim());
+                        setCustomTagInput('');
+                      }
+                    }}
+                    className="w-full px-2 py-1 bg-dark-bg border border-dark-border rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-primary-500"
+                    autoFocus
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Press Enter to add custom tag</p>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-dark-border" />
+
+                {/* Preset tags */}
                 {PRESET_TAGS.map((presetTag) => {
                   const isSelected = tags.includes(presetTag);
                   return (
@@ -325,25 +335,6 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
                     </button>
                   );
                 })}
-
-                {/* Custom tag option */}
-                <div className="border-t border-dark-border p-2">
-                  <input
-                    type="text"
-                    placeholder="Add custom tag..."
-                    value={customTagInput}
-                    onChange={(e) => setCustomTagInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && customTagInput.trim()) {
-                        e.preventDefault();
-                        addTag(customTagInput.trim());
-                        setCustomTagInput('');
-                      }
-                    }}
-                    className="w-full px-2 py-1 bg-dark-bg border border-dark-border rounded text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-primary-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Press Enter to add custom tag</p>
-                </div>
               </div>
             )}
           </div>
