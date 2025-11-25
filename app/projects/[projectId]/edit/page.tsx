@@ -25,6 +25,7 @@ import { ChecklistModuleWithResults } from '@/types/checklist';
 import { Button } from '@/components/ui/Button';
 import { AddModuleDialog } from '@/components/checklists/AddModuleDialog';
 import { AddTestCaseDialog } from '@/components/checklists/AddTestCaseDialog';
+import { ImportChecklistDialog } from '@/components/checklists/ImportChecklistDialog';
 import { useCurrentTester } from '@/contexts/TesterContext';
 
 type DraftModule = ChecklistModuleWithResults & {
@@ -306,6 +307,9 @@ export default function ProjectEditPage() {
   const [selectedModuleForTestCases, setSelectedModuleForTestCases] = useState<DraftModule | null>(null);
   const [isAddTestCaseDialogOpen, setIsAddTestCaseDialogOpen] = useState(false);
 
+  // Import checklist dialog state
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+
   // Track if there are unsaved changes
   const hasUnsavedChanges = JSON.stringify(draftModules) !== JSON.stringify(originalModules);
 
@@ -410,11 +414,40 @@ export default function ProjectEditPage() {
           setAvailableModules(normalized);
         }
 
-        // Update checklist
+        // Update checklist - DE-DUPLICATE testcases for Edit mode
+        // Each testcase may have multiple entries (one per tester), but Edit mode
+        // should show unique testcases only
         if (checklistResult?.success) {
           const modules = checklistResult.data.modules || [];
-          setOriginalModules(modules); // Store original
-          setDraftModules(JSON.parse(JSON.stringify(modules))); // Clone for drafts
+
+          // De-duplicate testcases within each module
+          const deduplicatedModules = modules.map((module: ChecklistModuleWithResults) => {
+            const seenTestcases = new Map<string, typeof module.testResults[0]>();
+
+            // Keep only the first occurrence of each unique testcase
+            // Use testcaseId if available, otherwise use testcaseTitle as key
+            for (const tr of module.testResults || []) {
+              const key = tr.testcaseId || tr.testcaseTitle;
+              if (key && !seenTestcases.has(key)) {
+                seenTestcases.set(key, tr);
+              }
+            }
+
+            const uniqueTestResults = Array.from(seenTestcases.values());
+
+            return {
+              ...module,
+              testResults: uniqueTestResults,
+              totalTests: uniqueTestResults.length,
+              pendingTests: uniqueTestResults.filter(tr => tr.status === 'Pending').length,
+              passedTests: uniqueTestResults.filter(tr => tr.status === 'Pass').length,
+              failedTests: uniqueTestResults.filter(tr => tr.status === 'Fail').length,
+              skippedTests: uniqueTestResults.filter(tr => tr.status === 'Skipped').length,
+            };
+          });
+
+          setOriginalModules(deduplicatedModules); // Store original
+          setDraftModules(JSON.parse(JSON.stringify(deduplicatedModules))); // Clone for drafts
         }
       } catch (err) {
         console.error('Error loading data:', err);
@@ -781,6 +814,92 @@ export default function ProjectEditPage() {
         };
       })
     );
+  };
+
+  // Import checklist from another project
+  interface ImportedModule {
+    moduleId: string | null;
+    moduleName: string;
+    moduleDescription?: string;
+    moduleThumbnailUrl?: string;
+    instanceLabel: string;
+    testCases: {
+      testcaseId: string | null;
+      title: string;
+      description?: string;
+      priority: 'High' | 'Medium' | 'Low';
+    }[];
+  }
+
+  const handleImportChecklist = (sourceModules: ImportedModule[]) => {
+    const newDraftModules: DraftModule[] = [];
+
+    for (const srcModule of sourceModules) {
+      // Generate unique instance label
+      let instanceLabel = srcModule.instanceLabel || srcModule.moduleName;
+
+      // Check for conflicts with existing draft modules
+      const existingLabels = [
+        ...draftModules.filter(m => !m._isDeleted).map(m => (m.instanceLabel || m.moduleName).toLowerCase()),
+        ...newDraftModules.map(m => (m.instanceLabel || m.moduleName).toLowerCase())
+      ];
+
+      if (existingLabels.includes(instanceLabel.toLowerCase())) {
+        instanceLabel = `${instanceLabel} (imported)`;
+        // If still conflicts, add number: "(imported 2)", etc.
+        let counter = 2;
+        while (existingLabels.includes(instanceLabel.toLowerCase())) {
+          instanceLabel = `${srcModule.instanceLabel || srcModule.moduleName} (imported ${counter})`;
+          counter++;
+        }
+      }
+
+      // Determine if source module is custom (no library reference)
+      const isSourceCustom = !srcModule.moduleId || srcModule.moduleId.startsWith('custom-');
+
+      // Create draft module
+      const draftModule: DraftModule = {
+        id: `draft-import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        projectId,
+        moduleId: srcModule.moduleId || `custom-${Date.now()}`,
+        moduleName: srcModule.moduleName,
+        moduleDescription: srcModule.moduleDescription,
+        instanceLabel: instanceLabel,
+        instanceNumber: draftModules.filter(m => !m._isDeleted).length + newDraftModules.length + 1,
+        orderIndex: draftModules.filter(m => !m._isDeleted).length + newDraftModules.length,
+        _isDraft: true,
+        _isCustom: isSourceCustom,
+        testResults: srcModule.testCases.map((tc, idx) => ({
+          id: `draft-import-tc-${Date.now()}-${idx}`,
+          projectChecklistModuleId: `draft-import-${Date.now()}`,
+          testcaseId: tc.testcaseId || `custom-tc-${Date.now()}-${idx}`,
+          testcaseTitle: tc.title,
+          testcaseDescription: tc.description,
+          testcasePriority: tc.priority,
+          status: 'Pending' as const,  // Fresh start
+          notes: undefined,            // No notes copied
+          testedBy: undefined,
+          testedAt: undefined,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })),
+        // Stats will be calculated
+        totalTests: srcModule.testCases.length,
+        pendingTests: srcModule.testCases.length,
+        passedTests: 0,
+        failedTests: 0,
+        skippedTests: 0,
+        progress: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      newDraftModules.push(draftModule);
+    }
+
+    setDraftModules([...draftModules, ...newDraftModules]);
+
+    console.log(`[IMPORT] Imported ${newDraftModules.length} modules from another project`);
   };
 
   // Get available testcases for a module
@@ -1373,6 +1492,16 @@ export default function ProjectEditPage() {
                 </span>
               )}
               <Button
+                onClick={() => setIsImportDialogOpen(true)}
+                disabled={saving}
+                variant="secondary"
+              >
+                <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                Import from Project
+              </Button>
+              <Button
                 onClick={handleCancel}
                 disabled={saving}
                 variant="secondary"
@@ -1590,6 +1719,17 @@ export default function ProjectEditPage() {
           }}
         />
       )}
+
+      {/* Import Checklist Dialog */}
+      <ImportChecklistDialog
+        isOpen={isImportDialogOpen}
+        onClose={() => setIsImportDialogOpen(false)}
+        onImport={handleImportChecklist}
+        currentProjectId={projectId}
+        existingModuleLabels={draftModules
+          .filter((m) => !m._isDeleted)
+          .map((m) => m.instanceLabel || m.moduleName)}
+      />
     </div>
   );
 }
