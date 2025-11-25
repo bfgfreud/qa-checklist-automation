@@ -93,7 +93,7 @@ export default function WorkingModePage() {
     try {
       const [projectRes, checklistRes] = await Promise.all([
         fetch(`/api/projects/${projectId}`),
-        fetch(`/api/checklists/${projectId}?view=multi-tester`),
+        fetch(`/api/checklists/${projectId}?view=multi-tester&_t=${Date.now()}`),
       ]);
 
       const [projectResult, checklistResult] = await Promise.all([
@@ -1134,7 +1134,7 @@ export default function WorkingModePage() {
                                             title={result.notes && result.notes.trim() ? "Click to view notes" : "No notes"}
                                           >
                                             {result.notes && result.notes.trim() ? (
-                                              <span className="truncate block">📝 {linkifyText(result.notes)}</span>
+                                              <span className="block line-clamp-1">📝 {linkifyText(result.notes)}</span>
                                             ) : (
                                               <span>No notes</span>
                                             )}
@@ -1419,7 +1419,7 @@ export default function WorkingModePage() {
                                           className="truncate text-gray-400 cursor-pointer hover:text-gray-300"
                                           title="Click to expand notes"
                                         >
-                                          📝 {result.notes}
+                                          📝 {result.notes ? linkifyText(result.notes) : ''}
                                         </div>
                                       ) : (
                                         /* Expanded - Full text with line breaks */
@@ -1434,7 +1434,7 @@ export default function WorkingModePage() {
                                           className="text-gray-400 cursor-pointer hover:text-gray-300 whitespace-pre-wrap"
                                           title="Click to collapse notes"
                                         >
-                                          📝 {result.notes}
+                                          📝 {result.notes ? linkifyText(result.notes) : ''}
                                         </div>
                                       )
                                     ) : (

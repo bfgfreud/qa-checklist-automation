@@ -98,6 +98,18 @@ export const ModuleForm: React.FC<ModuleFormProps> = ({ isOpen, onClose, onSubmi
       '#9B59B6', // purple
       '#E74C3C', // red
       '#3498DB', // sky blue
+      '#F39C12', // amber
+      '#1ABC9C', // turquoise
+      '#2ECC71', // emerald
+      '#E67E22', // carrot
+      '#8E44AD', // wisteria
+      '#C0392B', // pomegranate
+      '#16A085', // green sea
+      '#27AE60', // nephritis
+      '#D35400', // pumpkin
+      '#2980B9', // belize hole
+      '#F1C40F', // sunflower
+      '#E91E63', // pink
     ];
 
     // Simple hash function for consistent color
