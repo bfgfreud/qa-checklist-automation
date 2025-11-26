@@ -57,6 +57,9 @@ export default function WorkingModePage() {
   // Track if we're currently assigning a tester to prevent loops
   const isAssigningRef = useRef(false);
 
+  // Track if assignment is in progress (for loading state)
+  const [isAssigning, setIsAssigning] = useState(false);
+
   // Track which notes field is currently focused (never clear its local edit)
   const focusedResultIdRef = useRef<string | null>(null);
 
@@ -164,9 +167,10 @@ export default function WorkingModePage() {
           if (!isAssigned) {
             // Set flag to prevent multiple assignment attempts
             isAssigningRef.current = true;
+            setIsAssigning(true);
             console.log('[Auto-assign] Assigning current tester to project...');
 
-            // Silently assign current tester to project
+            // Assign current tester to project and wait for test results to be created
             try {
               const response = await fetch(`/api/projects/${projectId}/testers`, {
                 method: 'POST',
@@ -175,11 +179,16 @@ export default function WorkingModePage() {
               });
 
               if (response.ok) {
-                console.log('[Auto-assign] Assignment successful, data will refresh via polling');
-                // Don't call fetchData recursively - let the component naturally refetch
-                // The useEffect below will trigger on next render cycle
+                console.log('[Auto-assign] Assignment successful, refreshing data...');
+                // Wait a moment for the database to settle, then refetch
+                await new Promise(resolve => setTimeout(resolve, 500));
+                // Recursively call fetchData to get the updated data with test results
+                isAssigningRef.current = false;
+                setIsAssigning(false);
+                await fetchData(true);
+                return;
               } else if (response.status === 409) {
-                // Already assigned (race condition) - this is fine
+                // Already assigned (race condition) - this is fine, just continue
                 console.log('[Auto-assign] Tester already assigned (409), continuing...');
               } else {
                 console.error('[Auto-assign] Assignment failed:', response.status);
@@ -187,14 +196,9 @@ export default function WorkingModePage() {
             } catch (err) {
               console.error('[Auto-assign] Error assigning tester:', err);
             } finally {
-              // Reset flag after a short delay to allow refetch
-              setTimeout(() => {
-                isAssigningRef.current = false;
-              }, 1000);
+              isAssigningRef.current = false;
+              setIsAssigning(false);
             }
-
-            // Exit early - let next fetch cycle pick up the assignment
-            return;
           }
         }
 
@@ -614,12 +618,17 @@ export default function WorkingModePage() {
     );
   }
 
-  if (loading) {
+  if (loading || isAssigning) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading checklist...</p>
+          <p className="text-gray-400">
+            {isAssigning ? 'Setting up your workspace...' : 'Loading checklist...'}
+          </p>
+          {isAssigning && (
+            <p className="text-gray-500 text-sm mt-2">Creating your test results, please wait</p>
+          )}
         </div>
       </div>
     );

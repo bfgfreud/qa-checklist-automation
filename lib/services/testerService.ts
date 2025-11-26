@@ -330,6 +330,8 @@ export const testerService = {
             testcase_title,
             testcase_description,
             testcase_id,
+            testcase_priority,
+            is_custom,
             display_order
           )
         `)
@@ -361,6 +363,8 @@ export const testerService = {
               testcase_id: testcase.testcase_id || null,
               testcase_title: testcase.testcase_title,
               testcase_description: testcase.testcase_description || null,
+              testcase_priority: testcase.testcase_priority || 'Medium',
+              is_custom: testcase.is_custom || false,
               display_order: testcase.display_order || 0, // Preserve display order
               status: 'Pending' as const,
               notes: null,
