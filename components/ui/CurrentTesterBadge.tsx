@@ -1,32 +1,39 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useCurrentTester } from '@/contexts/TesterContext';
 import { TesterAvatar } from './TesterAvatar';
-import { Tester } from '@/types/tester';
+import Link from 'next/link';
 
 export function CurrentTesterBadge() {
-  const { currentTester, setCurrentTester } = useCurrentTester();
+  const { currentTester, user, loading, signOut } = useCurrentTester();
   const [showDropdown, setShowDropdown] = useState(false);
-  const [testers, setTesters] = useState<Tester[]>([]);
-  const [loading, setLoading] = useState(false);
 
-  // Fetch testers when dropdown opens
-  useEffect(() => {
-    if (showDropdown) {
-      setLoading(true);
-      fetch('/api/testers')
-        .then(res => res.json())
-        .then(result => {
-          if (result.success) {
-            setTesters(result.data || []);
-          }
-        })
-        .catch(console.error)
-        .finally(() => setLoading(false));
-    }
-  }, [showDropdown]);
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-dark-elevated border border-dark-border rounded-lg">
+        <div className="w-6 h-6 rounded-full bg-gray-600 animate-pulse"></div>
+        <span className="text-sm text-gray-400">Loading...</span>
+      </div>
+    );
+  }
 
+  // Not signed in - show sign in link
+  if (!user) {
+    return (
+      <Link
+        href="/login"
+        className="flex items-center gap-2 px-3 py-1.5 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+        </svg>
+        <span className="text-sm font-medium">Sign In</span>
+      </Link>
+    );
+  }
+
+  // Signed in - show user info with dropdown
   return (
     <div className="relative">
       <button
@@ -45,7 +52,7 @@ export function CurrentTesterBadge() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>
-            <span className="text-sm text-gray-400">Set Your Name</span>
+            <span className="text-sm text-gray-400">{user.email}</span>
           </>
         )}
         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,7 +60,7 @@ export function CurrentTesterBadge() {
         </svg>
       </button>
 
-      {/* Tester Selection Dropdown */}
+      {/* Dropdown Menu */}
       {showDropdown && (
         <>
           {/* Backdrop */}
@@ -63,60 +70,37 @@ export function CurrentTesterBadge() {
           />
 
           {/* Dropdown */}
-          <div className="absolute right-0 top-full mt-2 w-64 bg-dark-secondary border border-dark-border rounded-lg shadow-xl z-50 overflow-hidden">
+          <div className="absolute right-0 top-full mt-2 w-56 bg-dark-secondary border border-dark-border rounded-lg shadow-xl z-50 overflow-hidden">
+            {/* User Info */}
             <div className="p-3 border-b border-dark-border">
-              <h3 className="text-sm font-semibold text-white">Select Tester</h3>
-            </div>
-
-            <div className="max-h-64 overflow-y-auto p-2">
-              {loading ? (
-                <div className="flex items-center justify-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500"></div>
+              <div className="flex items-center gap-3">
+                {currentTester && <TesterAvatar tester={currentTester} size="md" />}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-white truncate">
+                    {currentTester?.name || user.email}
+                  </div>
+                  <div className="text-xs text-gray-400 truncate">
+                    {user.email}
+                  </div>
                 </div>
-              ) : testers.length === 0 ? (
-                <div className="text-center py-4 text-gray-400 text-sm">
-                  No testers found. Go to Testers page to create one.
-                </div>
-              ) : (
-                testers.map((tester) => (
-                  <button
-                    key={tester.id}
-                    onClick={() => {
-                      setCurrentTester(tester);
-                      setShowDropdown(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                      currentTester?.id === tester.id
-                        ? 'bg-primary-500/20 border border-primary-500/30'
-                        : 'hover:bg-dark-elevated'
-                    }`}
-                  >
-                    <TesterAvatar tester={tester} size="sm" />
-                    <span className="text-sm text-white">{tester.name}</span>
-                    {currentTester?.id === tester.id && (
-                      <svg className="w-4 h-4 text-primary-500 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </button>
-                ))
-              )}
-            </div>
-
-            {/* Clear Selection */}
-            {currentTester && (
-              <div className="p-2 border-t border-dark-border">
-                <button
-                  onClick={() => {
-                    setCurrentTester(null);
-                    setShowDropdown(false);
-                  }}
-                  className="w-full text-sm text-gray-400 hover:text-white py-2 transition-colors"
-                >
-                  Clear Selection
-                </button>
               </div>
-            )}
+            </div>
+
+            {/* Menu Items */}
+            <div className="p-2">
+              <button
+                onClick={() => {
+                  signOut();
+                  setShowDropdown(false);
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-300 hover:bg-dark-elevated rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Sign Out
+              </button>
+            </div>
           </div>
         </>
       )}
