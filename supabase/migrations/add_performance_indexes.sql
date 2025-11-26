@@ -53,11 +53,11 @@ CREATE INDEX IF NOT EXISTS idx_checklist_results_module_status
 
 -- For ordering modules within a project
 CREATE INDEX IF NOT EXISTS idx_project_checklist_modules_order
-  ON project_checklist_modules(project_id, display_order);
+  ON project_checklist_modules(project_id, order_index);
 
 -- For ordering test cases within a module
 CREATE INDEX IF NOT EXISTS idx_base_testcases_order
-  ON base_testcases(module_id, display_order);
+  ON base_testcases(module_id, order_index);
 
 -- =====================================================
 -- Verification Queries (run these to verify indexes)
