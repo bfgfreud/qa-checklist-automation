@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { useProjects, useCreateProject, useDeleteProject, useUpdateProject } from '@/hooks/queries';
 import { Project, CreateProjectDto, UpdateProjectDto, ProjectStatus } from '@/types/project';
 import { Button } from '@/components/ui/Button';
 import { ProjectCard } from '@/components/projects/ProjectCard';
@@ -12,11 +14,34 @@ type SortOrder = 'asc' | 'desc';
 
 export default function ProjectsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  // Server state (source of truth from API)
-  const [projects, setProjects] = useState<Project[]>([]);
+  // React Query hooks
+  const { data: rawProjects, isLoading: loading, error: fetchError } = useProjects();
+  const createProjectMutation = useCreateProject();
+  const deleteProjectMutation = useDeleteProject();
+  const updateProjectMutation = useUpdateProject();
 
-  // Draft state (local working copy)
+  // Transform projects from API format to frontend format
+  const projects = useMemo(() => {
+    if (!rawProjects) return [];
+    // API returns snake_case, transform to camelCase
+    return rawProjects.map((proj) => ({
+      id: proj.id,
+      name: proj.name,
+      description: proj.description,
+      version: proj.version,
+      platform: proj.platform,
+      status: proj.status,
+      priority: proj.priority || 'Medium',
+      dueDate: (proj as unknown as Record<string, string>).due_date || proj.dueDate,
+      createdBy: (proj as unknown as Record<string, string>).created_by || proj.createdBy,
+      createdAt: (proj as unknown as Record<string, string>).created_at || proj.createdAt,
+      updatedAt: (proj as unknown as Record<string, string>).updated_at || proj.updatedAt,
+    })) as Project[];
+  }, [rawProjects]);
+
+  // Draft state (local working copy for batch edits)
   const [draftProjects, setDraftProjects] = useState<Project[]>([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
@@ -30,18 +55,25 @@ export default function ProjectsPage() {
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isProjectFormOpen, setIsProjectFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | undefined>();
   const success = (_msg: string) => console.log('Success:', _msg);
   const error = (_msg: string) => console.error('Error:', _msg);
 
-  // Load projects from API on mount
+  // Sync draft state when projects load/change
   useEffect(() => {
-    fetchProjects();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (projects.length > 0 && !hasUnsavedChanges) {
+      setDraftProjects(projects);
+    }
+  }, [projects, hasUnsavedChanges]);
+
+  // Log fetch errors
+  useEffect(() => {
+    if (fetchError) {
+      error(fetchError.message || 'Failed to load projects');
+    }
+  }, [fetchError]);
 
   // Set up beforeunload warning when there are unsaved changes
   useEffect(() => {
@@ -59,18 +91,6 @@ export default function ProjectsPage() {
 
   // Prevent navigation when there are unsaved changes
   useEffect(() => {
-    const handleRouteChange = () => {
-      if (hasUnsavedChanges) {
-        const confirmLeave = window.confirm(
-          'You have unsaved changes. Do you want to leave without saving?'
-        );
-        if (!confirmLeave) {
-          // Prevent navigation by throwing an error
-          throw 'Route change cancelled by user';
-        }
-      }
-    };
-
     // Listen to link clicks and browser back/forward
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -98,49 +118,6 @@ export default function ProjectsPage() {
   }, [hasUnsavedChanges]);
 
   /**
-   * Fetch all projects from the API
-   */
-  const fetchProjects = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/projects?t=${Date.now()}`, { cache: 'no-store' });
-      const result = await response.json();
-
-      if (result.success) {
-        // Transform the Supabase data to match our frontend types
-        const transformedProjects: Project[] = result.data.map((proj: Record<string, string>) => ({
-          id: proj.id,
-          name: proj.name,
-          description: proj.description,
-          version: proj.version,
-          platform: proj.platform,
-          status: proj.status,
-          priority: proj.priority || 'Medium',
-          dueDate: proj.due_date,
-          createdBy: proj.created_by,
-          createdAt: proj.created_at,
-          updatedAt: proj.updated_at,
-        }));
-
-        // Set both server state and draft state
-        setProjects(transformedProjects);
-        setDraftProjects(transformedProjects);
-
-        // Reset change tracking
-        setHasUnsavedChanges(false);
-        setDeletedProjectIds(new Set());
-      } else {
-        error(result.error || 'Failed to load projects');
-      }
-    } catch {
-      console.error('Error fetching projects:');
-      error('Failed to load projects');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
    * DRAFT MODE HANDLERS - Update local state only, no API calls
    */
 
@@ -159,36 +136,30 @@ export default function ProjectsPage() {
       return;
     }
 
-    // Create project immediately via API
-    try {
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: projectName,
-          description: data.description,
-          version: data.version,
-          platform: data.platform,
-          status: data.status || 'Draft',
-          priority: data.priority || 'Medium',
-          due_date: data.dueDate,
-        }),
-      });
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        success('Project created successfully');
-        setIsProjectFormOpen(false);
-
-        // Redirect to edit mode immediately
-        router.push(`/projects/${result.data.id}/edit`);
-      } else {
-        throw new Error(result.error || 'Failed to create project');
+    // Create project using mutation
+    createProjectMutation.mutate(
+      {
+        name: projectName,
+        description: data.description,
+        version: data.version,
+        platform: data.platform,
+        status: data.status || 'Draft',
+        priority: data.priority || 'Medium',
+        dueDate: data.dueDate,
+      },
+      {
+        onSuccess: (newProject) => {
+          success('Project created successfully');
+          setIsProjectFormOpen(false);
+          // Redirect to edit mode immediately
+          router.push(`/projects/${newProject.id}/edit`);
+        },
+        onError: (err) => {
+          console.error('Error creating project:', err);
+          error(err instanceof Error ? err.message : 'Failed to create project');
+        },
       }
-    } catch (err) {
-      console.error('Error creating project:', err);
-      error(err instanceof Error ? err.message : 'Failed to create project');
-    }
+    );
   };
 
   const handleUpdateProject = async (data: CreateProjectDto | UpdateProjectDto) => {
@@ -297,37 +268,25 @@ export default function ProjectsPage() {
       // 1. Delete projects
       for (const projectId of changes.deletedProjectIds) {
         try {
-          const response = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
-          const result = await response.json();
-          if (!result.success) {
-            errors.push(`Failed to delete project ${projectId}`);
-          }
-        } catch {
-          errors.push(`Error deleting project ${projectId}`);
+          await deleteProjectMutation.mutateAsync(projectId);
+        } catch (err) {
+          errors.push(`Failed to delete project ${projectId}`);
         }
       }
 
-      // 2. Create new projects
+      // 2. Create new projects (rare from this page, usually redirects)
       for (const project of changes.newProjects) {
         try {
-          const response = await fetch('/api/projects', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: project.name,
-              description: project.description,
-              version: project.version,
-              platform: project.platform,
-              status: project.status,
-              priority: project.priority,
-              due_date: project.dueDate,
-            }),
+          await createProjectMutation.mutateAsync({
+            name: project.name,
+            description: project.description,
+            version: project.version,
+            platform: project.platform,
+            status: project.status,
+            priority: project.priority,
+            dueDate: project.dueDate,
           });
-          const result = await response.json();
-          if (!result.success) {
-            errors.push(`Failed to create project ${project.name}`);
-          }
-        } catch {
+        } catch (err) {
           errors.push(`Error creating project ${project.name}`);
         }
       }
@@ -335,24 +294,18 @@ export default function ProjectsPage() {
       // 3. Update existing projects
       for (const project of changes.updatedProjects) {
         try {
-          const response = await fetch(`/api/projects/${project.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+          await updateProjectMutation.mutateAsync({
+            id: project.id,
+            data: {
               name: project.name,
               description: project.description,
               version: project.version,
               platform: project.platform,
-              // Status is auto-calculated, don't send it
               priority: project.priority,
-              due_date: project.dueDate,
-            }),
+              dueDate: project.dueDate,
+            },
           });
-          const result = await response.json();
-          if (!result.success) {
-            errors.push(`Failed to update project ${project.name}`);
-          }
-        } catch {
+        } catch (err) {
           errors.push(`Error updating project ${project.name}`);
         }
       }
@@ -364,8 +317,12 @@ export default function ProjectsPage() {
         success('All changes saved successfully');
       }
 
-      // Reload from server to sync state
-      await fetchProjects();
+      // Reset unsaved changes state - React Query will refetch automatically
+      setHasUnsavedChanges(false);
+      setDeletedProjectIds(new Set());
+
+      // Force refetch to sync state
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
     } catch {
       console.error('Error saving changes:');
       error('Failed to save changes');
@@ -382,6 +339,7 @@ export default function ProjectsPage() {
       return;
     }
 
+    // Reset to the current React Query data
     setDraftProjects(projects);
     setHasUnsavedChanges(false);
     setDeletedProjectIds(new Set());

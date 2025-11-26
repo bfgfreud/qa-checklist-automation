@@ -123,6 +123,7 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
               className={`rounded object-cover flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity ${
                 isCompact ? 'w-10 h-10' : 'w-14 h-14'
               }`}
+              loading="lazy"
             />
           </button>
         ) : (

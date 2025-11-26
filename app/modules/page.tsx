@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -729,29 +729,42 @@ export default function ModulesPage() {
   };
 
   /**
-   * Filter modules based on search query
+   * Filter modules based on search query - memoized to avoid recalculating on every render
    */
-  const filteredModules = draftModules.filter((module) => {
-    if (!searchQuery.trim()) return true;
+  const filteredModules = useMemo(() => {
+    return draftModules.filter((module) => {
+      if (!searchQuery.trim()) return true;
 
-    const query = searchQuery.toLowerCase();
+      const query = searchQuery.toLowerCase();
 
-    // Search in module name and description
-    const moduleMatch =
-      module.name.toLowerCase().includes(query) ||
-      module.description?.toLowerCase().includes(query);
+      // Search in module name and description
+      const moduleMatch =
+        module.name.toLowerCase().includes(query) ||
+        module.description?.toLowerCase().includes(query);
 
-    // Search in tags
-    const tagMatch = module.tags?.some(tag => tag.toLowerCase().includes(query));
+      // Search in tags
+      const tagMatch = module.tags?.some(tag => tag.toLowerCase().includes(query));
 
-    // Search in test case titles and descriptions
-    const testCaseMatch = module.testCases.some((tc) =>
-      tc.title.toLowerCase().includes(query) ||
-      tc.description?.toLowerCase().includes(query)
-    );
+      // Search in test case titles and descriptions
+      const testCaseMatch = module.testCases.some((tc) =>
+        tc.title.toLowerCase().includes(query) ||
+        tc.description?.toLowerCase().includes(query)
+      );
 
-    return moduleMatch || tagMatch || testCaseMatch;
-  });
+      return moduleMatch || tagMatch || testCaseMatch;
+    });
+  }, [draftModules, searchQuery]);
+
+  /**
+   * Memoized stats for the footer - avoids recalculating on every render
+   */
+  const moduleStats = useMemo(() => {
+    return {
+      totalModules: draftModules.length,
+      totalTestCases: draftModules.reduce((sum, m) => sum + m.testCases.length, 0),
+      highPriorityModules: draftModules.filter((m) => m.testCases.some((tc) => tc.priority === 'High')).length,
+    };
+  }, [draftModules]);
 
   /**
    * Toggle module expansion
@@ -1255,18 +1268,18 @@ export default function ModulesPage() {
         {/* Stats */}
         <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-dark-secondary border border-dark-primary rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
-            <div className="text-3xl font-bold text-primary-500 mb-2">{draftModules.length}</div>
+            <div className="text-3xl font-bold text-primary-500 mb-2">{moduleStats.totalModules}</div>
             <div className="text-gray-400 text-sm">Total Modules</div>
           </div>
           <div className="bg-dark-secondary border border-dark-primary rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
             <div className="text-3xl font-bold text-primary-500 mb-2">
-              {draftModules.reduce((sum, m) => sum + m.testCases.length, 0)}
+              {moduleStats.totalTestCases}
             </div>
             <div className="text-gray-400 text-sm">Total Test Cases</div>
           </div>
           <div className="bg-dark-secondary border border-dark-primary rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
             <div className="text-3xl font-bold text-green-500 mb-2">
-              {draftModules.filter((m) => m.testCases.some((tc) => tc.priority === 'High')).length}
+              {moduleStats.highPriorityModules}
             </div>
             <div className="text-gray-400 text-sm">High Priority Modules</div>
           </div>

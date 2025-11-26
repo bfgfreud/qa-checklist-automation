@@ -51,7 +51,7 @@ export async function GET(
         {
           status: 200,
           headers: {
-            'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=59',
+            'Cache-Control': 'no-store',
           }
         }
       )

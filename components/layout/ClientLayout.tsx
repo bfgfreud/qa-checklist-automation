@@ -1,6 +1,7 @@
 'use client';
 
 import React, { ReactNode } from 'react';
+import { QueryProvider } from '@/components/providers/QueryProvider';
 import { TesterProvider } from '@/contexts/TesterContext';
 import { CurrentTesterBadge } from '@/components/ui/CurrentTesterBadge';
 import Link from 'next/link';
@@ -15,6 +16,7 @@ export function ClientLayout({ children }: { children: ReactNode }) {
   };
 
   return (
+    <QueryProvider>
     <TesterProvider>
       {/* Header/Nav */}
       <header className="sticky top-0 z-40 bg-dark-secondary border-b border-dark-border">
@@ -75,5 +77,6 @@ export function ClientLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
     </TesterProvider>
+    </QueryProvider>
   );
 }

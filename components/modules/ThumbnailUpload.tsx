@@ -137,6 +137,7 @@ export const ThumbnailUpload: React.FC<ThumbnailUploadProps> = ({
               src={value}
               alt="Thumbnail"
               className="w-full h-full object-cover"
+              loading="lazy"
             />
           ) : (
             <svg className="w-6 h-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -76,6 +76,7 @@ export function ImageGallery({ attachments, onDelete, readonly = false, compact 
               alt={attachment.file_name}
               className="w-full h-full object-cover cursor-pointer"
               onClick={() => setSelectedImage(attachment)}
+              loading="lazy"
             />
 
             {/* Overlay */}

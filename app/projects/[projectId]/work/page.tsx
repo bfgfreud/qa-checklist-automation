@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Project } from '@/types/project';
 import { Tester } from '@/types/tester';
@@ -73,6 +73,46 @@ export default function WorkingModePage() {
       lastActivity?: number;
     }
   }>({});
+
+  // Calculate overall stats - memoized to avoid recalculating on every render
+  // NOTE: This must be before any conditional returns to follow React hooks rules
+  const { stats, progress } = useMemo(() => {
+    const calculatedStats = {
+      total: 0,
+      pending: 0,
+      passed: 0,
+      failed: 0,
+      skipped: 0,
+    };
+
+    if (checklist?.modules) {
+      checklist.modules.forEach((module) => {
+        module.testCases.forEach((testCase) => {
+          calculatedStats.total++;
+          switch (testCase.overallStatus) {
+            case 'Pending':
+              calculatedStats.pending++;
+              break;
+            case 'Pass':
+              calculatedStats.passed++;
+              break;
+            case 'Fail':
+              calculatedStats.failed++;
+              break;
+            case 'Skipped':
+              calculatedStats.skipped++;
+              break;
+          }
+        });
+      });
+    }
+
+    const calculatedProgress = calculatedStats.total > 0
+      ? Math.round(((calculatedStats.passed + calculatedStats.failed + calculatedStats.skipped) / calculatedStats.total) * 100)
+      : 0;
+
+    return { stats: calculatedStats, progress: calculatedProgress };
+  }, [checklist?.modules]);
 
   // Helper to check if two objects are deeply equal
   const isDeepEqual = (obj1: any, obj2: any): boolean => {
@@ -596,39 +636,6 @@ export default function WorkingModePage() {
     );
   }
 
-  // Calculate overall stats
-  const stats = {
-    total: 0,
-    pending: 0,
-    passed: 0,
-    failed: 0,
-    skipped: 0,
-  };
-
-  checklist.modules.forEach((module) => {
-    module.testCases.forEach((testCase) => {
-      stats.total++;
-      switch (testCase.overallStatus) {
-        case 'Pending':
-          stats.pending++;
-          break;
-        case 'Pass':
-          stats.passed++;
-          break;
-        case 'Fail':
-          stats.failed++;
-          break;
-        case 'Skipped':
-          stats.skipped++;
-          break;
-      }
-    });
-  });
-
-  const progress = stats.total > 0
-    ? Math.round(((stats.passed + stats.failed + stats.skipped) / stats.total) * 100)
-    : 0;
-
   return (
     <div className="min-h-screen bg-black text-gray-200">
       {/* Header */}
@@ -914,6 +921,7 @@ export default function WorkingModePage() {
                         src={module.moduleThumbnailUrl}
                         alt={module.moduleName}
                         className="w-10 h-10 rounded object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                        loading="lazy"
                       />
                     </button>
                   )}
