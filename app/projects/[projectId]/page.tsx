@@ -473,7 +473,7 @@ export default function ProjectOverviewPage() {
                                 {hasNotes(testCase) && (
                                   <div className="absolute bottom-full right-0 mb-2 w-80
                                                   bg-dark-secondary border border-dark-border rounded-lg shadow-2xl z-50
-                                                  opacity-0 group-hover:opacity-100 transition-opacity">
+                                                  opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity">
                                     <div className="px-3 py-2 border-b border-dark-border">
                                       <span className="text-xs font-semibold text-gray-400">Tester Notes</span>
                                     </div>
@@ -522,7 +522,7 @@ export default function ProjectOverviewPage() {
                                 {hasAttachments(testCase) && (
                                   <div className="absolute bottom-full right-0 mb-2 w-80
                                                   bg-dark-secondary border border-dark-border rounded-lg shadow-2xl z-50
-                                                  opacity-0 group-hover:opacity-100 transition-opacity">
+                                                  opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity">
                                     <div className="px-3 py-2 border-b border-dark-border flex items-center justify-between">
                                       <span className="text-xs font-semibold text-gray-400">
                                         Attachments ({getAttachmentCount(testCase)})
