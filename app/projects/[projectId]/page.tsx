@@ -109,6 +109,27 @@ export default function ProjectOverviewPage() {
     Completed: 'bg-green-500/20 text-green-300 border border-green-500/30',
   };
 
+  // Helper functions for notes/attachments indicators
+  const hasNotes = (testCase: TestCaseWithResults): boolean => {
+    return testCase.results?.some(r => r.notes && r.notes.trim().length > 0) || false;
+  };
+
+  const hasAttachments = (testCase: TestCaseWithResults): boolean => {
+    return testCase.results?.some(r => r.attachments && r.attachments.length > 0) || false;
+  };
+
+  const getNotesPreview = (testCase: TestCaseWithResults): string => {
+    const allNotes = (testCase.results || [])
+      .filter(r => r.notes && r.notes.trim())
+      .map(r => `${r.tester?.name || 'Unknown'}: ${r.notes}`)
+      .join('\n');
+    return allNotes.length > 150 ? allNotes.substring(0, 150) + '...' : allNotes;
+  };
+
+  const getAttachmentCount = (testCase: TestCaseWithResults): number => {
+    return (testCase.results || []).reduce((sum, r) => sum + (r.attachments?.length || 0), 0);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -415,6 +436,50 @@ export default function ProjectOverviewPage() {
                               }`}>
                                 {testCase.testCase.priority}
                               </span>
+
+                              {/* Notes Indicator */}
+                              <div className="relative group">
+                                <svg
+                                  className={`w-4 h-4 ${hasNotes(testCase) ? 'text-blue-400' : 'text-gray-600'}`}
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                    d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+                                  />
+                                </svg>
+                                {hasNotes(testCase) && (
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2
+                                                  bg-dark-elevated border border-dark-border rounded-lg shadow-xl
+                                                  text-xs text-gray-300 whitespace-pre-wrap max-w-xs z-50
+                                                  opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                    {getNotesPreview(testCase)}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Images Indicator */}
+                              <div className="relative group">
+                                <svg
+                                  className={`w-4 h-4 ${hasAttachments(testCase) ? 'text-purple-400' : 'text-gray-600'}`}
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                  />
+                                </svg>
+                                {hasAttachments(testCase) && (
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2
+                                                  bg-dark-elevated border border-dark-border rounded-lg shadow-xl
+                                                  text-xs text-gray-300 z-50
+                                                  opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                    {getAttachmentCount(testCase)} image{getAttachmentCount(testCase) > 1 ? 's' : ''} attached
+                                  </div>
+                                )}
+                              </div>
 
                               {/* Status */}
                               <span className={`text-xs px-2 py-0.5 rounded ${
