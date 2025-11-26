@@ -21,6 +21,7 @@ export default function ProjectOverviewPage() {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   // Stats
   const [stats, setStats] = useState({
@@ -118,12 +119,32 @@ export default function ProjectOverviewPage() {
     return testCase.results?.some(r => r.attachments && r.attachments.length > 0) || false;
   };
 
-  const getNotesPreview = (testCase: TestCaseWithResults): string => {
-    const allNotes = (testCase.results || [])
+  // Get all notes with tester info for display
+  const getNotesWithTesters = (testCase: TestCaseWithResults) => {
+    return (testCase.results || [])
       .filter(r => r.notes && r.notes.trim())
-      .map(r => `${r.tester?.name || 'Unknown'}: ${r.notes}`)
-      .join('\n');
-    return allNotes.length > 150 ? allNotes.substring(0, 150) + '...' : allNotes;
+      .map(r => ({
+        testerName: r.tester?.name || 'Unknown',
+        testerColor: r.tester?.color || '#666',
+        notes: r.notes || '',
+        status: r.status,
+      }));
+  };
+
+  // Get all attachments with tester info for display
+  const getAllAttachments = (testCase: TestCaseWithResults) => {
+    const attachments: { url: string; fileName: string; testerName: string; testerColor: string }[] = [];
+    (testCase.results || []).forEach(r => {
+      (r.attachments || []).forEach(att => {
+        attachments.push({
+          url: att.file_url,
+          fileName: att.file_name,
+          testerName: r.tester?.name || 'Unknown',
+          testerColor: r.tester?.color || '#666',
+        });
+      });
+    });
+    return attachments;
   };
 
   const getAttachmentCount = (testCase: TestCaseWithResults): number => {
@@ -440,7 +461,7 @@ export default function ProjectOverviewPage() {
                               {/* Notes Indicator */}
                               <div className="relative group">
                                 <svg
-                                  className={`w-4 h-4 ${hasNotes(testCase) ? 'text-blue-400' : 'text-gray-600'}`}
+                                  className={`w-4 h-4 cursor-pointer ${hasNotes(testCase) ? 'text-blue-400' : 'text-gray-600'}`}
                                   fill="none"
                                   stroke="currentColor"
                                   viewBox="0 0 24 24"
@@ -450,11 +471,38 @@ export default function ProjectOverviewPage() {
                                   />
                                 </svg>
                                 {hasNotes(testCase) && (
-                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2
-                                                  bg-dark-elevated border border-dark-border rounded-lg shadow-xl
-                                                  text-xs text-gray-300 whitespace-pre-wrap max-w-xs z-50
+                                  <div className="absolute bottom-full right-0 mb-2 w-80
+                                                  bg-dark-secondary border border-dark-border rounded-lg shadow-2xl z-50
                                                   opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                    {getNotesPreview(testCase)}
+                                    <div className="px-3 py-2 border-b border-dark-border">
+                                      <span className="text-xs font-semibold text-gray-400">Tester Notes</span>
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto">
+                                      {getNotesWithTesters(testCase).map((note, idx) => (
+                                        <div key={idx} className="px-3 py-2 border-b border-dark-border last:border-b-0">
+                                          <div className="flex items-center gap-2 mb-1">
+                                            <div
+                                              className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                                              style={{ backgroundColor: note.testerColor }}
+                                            >
+                                              {note.testerName.charAt(0).toUpperCase()}
+                                            </div>
+                                            <span className="text-xs font-medium text-white">{note.testerName}</span>
+                                            <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                              note.status === 'Pass' ? 'bg-green-500/20 text-green-400' :
+                                              note.status === 'Fail' ? 'bg-red-500/20 text-red-400' :
+                                              note.status === 'Skipped' ? 'bg-yellow-500/20 text-yellow-400' :
+                                              'bg-gray-500/20 text-gray-400'
+                                            }`}>
+                                              {note.status}
+                                            </span>
+                                          </div>
+                                          <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+                                            {note.notes}
+                                          </p>
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -462,7 +510,7 @@ export default function ProjectOverviewPage() {
                               {/* Images Indicator */}
                               <div className="relative group">
                                 <svg
-                                  className={`w-4 h-4 ${hasAttachments(testCase) ? 'text-purple-400' : 'text-gray-600'}`}
+                                  className={`w-4 h-4 cursor-pointer ${hasAttachments(testCase) ? 'text-purple-400' : 'text-gray-600'}`}
                                   fill="none"
                                   stroke="currentColor"
                                   viewBox="0 0 24 24"
@@ -472,11 +520,48 @@ export default function ProjectOverviewPage() {
                                   />
                                 </svg>
                                 {hasAttachments(testCase) && (
-                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2
-                                                  bg-dark-elevated border border-dark-border rounded-lg shadow-xl
-                                                  text-xs text-gray-300 z-50
-                                                  opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                    {getAttachmentCount(testCase)} image{getAttachmentCount(testCase) > 1 ? 's' : ''} attached
+                                  <div className="absolute bottom-full right-0 mb-2 w-80
+                                                  bg-dark-secondary border border-dark-border rounded-lg shadow-2xl z-50
+                                                  opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="px-3 py-2 border-b border-dark-border flex items-center justify-between">
+                                      <span className="text-xs font-semibold text-gray-400">
+                                        Attachments ({getAttachmentCount(testCase)})
+                                      </span>
+                                      <span className="text-xs text-gray-500">Click to view full size</span>
+                                    </div>
+                                    <div className="p-2 max-h-72 overflow-y-auto">
+                                      <div className="grid grid-cols-3 gap-2">
+                                        {getAllAttachments(testCase).map((att, idx) => (
+                                          <div key={idx} className="relative group/img">
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setLightboxImage(att.url);
+                                              }}
+                                              className="w-full aspect-square rounded overflow-hidden border border-dark-border
+                                                         hover:border-purple-500 transition-colors cursor-pointer"
+                                            >
+                                              <img
+                                                src={att.url}
+                                                alt={att.fileName}
+                                                className="w-full h-full object-cover"
+                                                loading="lazy"
+                                              />
+                                            </button>
+                                            <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-1 py-0.5
+                                                            opacity-0 group-hover/img:opacity-100 transition-opacity">
+                                              <div className="flex items-center gap-1">
+                                                <div
+                                                  className="w-3 h-3 rounded-full flex-shrink-0"
+                                                  style={{ backgroundColor: att.testerColor }}
+                                                />
+                                                <span className="text-[10px] text-white truncate">{att.testerName}</span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -502,6 +587,41 @@ export default function ProjectOverviewPage() {
           )}
         </div>
       </main>
+
+      {/* Lightbox Modal for Full-Size Images */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightboxImage(null)}
+        >
+          {/* Close Button */}
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-10"
+          >
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          {/* Image Container */}
+          <div
+            className="relative max-w-[90vw] max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={lightboxImage}
+              alt="Full size attachment"
+              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            />
+          </div>
+
+          {/* Instructions */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-gray-400 text-sm">
+            Click anywhere or press X to close
+          </div>
+        </div>
+      )}
     </div>
   );
 }
