@@ -26,7 +26,7 @@ CREATE INDEX IF NOT EXISTS idx_project_checklist_modules_project_id
   ON project_checklist_modules(project_id);
 
 CREATE INDEX IF NOT EXISTS idx_project_checklist_modules_module_id
-  ON project_checklist_modules(base_module_id);
+  ON project_checklist_modules(module_id);
 
 -- base_testcases indexes
 CREATE INDEX IF NOT EXISTS idx_base_testcases_module_id
