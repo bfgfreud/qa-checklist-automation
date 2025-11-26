@@ -471,37 +471,38 @@ export default function ProjectOverviewPage() {
                                   />
                                 </svg>
                                 {hasNotes(testCase) && (
-                                  <div className="absolute bottom-full right-0 mb-2 w-80
-                                                  bg-dark-secondary border border-dark-border rounded-lg shadow-2xl z-50
+                                  <div className="absolute bottom-full right-0 pb-2
                                                   opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity">
-                                    <div className="px-3 py-2 border-b border-dark-border">
-                                      <span className="text-xs font-semibold text-gray-400">Tester Notes</span>
-                                    </div>
-                                    <div className="max-h-64 overflow-y-auto">
-                                      {getNotesWithTesters(testCase).map((note, idx) => (
-                                        <div key={idx} className="px-3 py-2 border-b border-dark-border last:border-b-0">
-                                          <div className="flex items-center gap-2 mb-1">
-                                            <div
-                                              className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-medium"
-                                              style={{ backgroundColor: note.testerColor }}
-                                            >
-                                              {note.testerName.charAt(0).toUpperCase()}
+                                    <div className="w-80 bg-dark-secondary border border-dark-border rounded-lg shadow-2xl">
+                                      <div className="px-3 py-2 border-b border-dark-border">
+                                        <span className="text-xs font-semibold text-gray-400">Tester Notes</span>
+                                      </div>
+                                      <div className="max-h-64 overflow-y-auto">
+                                        {getNotesWithTesters(testCase).map((note, idx) => (
+                                          <div key={idx} className="px-3 py-2 border-b border-dark-border last:border-b-0">
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <div
+                                                className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                                                style={{ backgroundColor: note.testerColor }}
+                                              >
+                                                {note.testerName.charAt(0).toUpperCase()}
+                                              </div>
+                                              <span className="text-xs font-medium text-white">{note.testerName}</span>
+                                              <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                                note.status === 'Pass' ? 'bg-green-500/20 text-green-400' :
+                                                note.status === 'Fail' ? 'bg-red-500/20 text-red-400' :
+                                                note.status === 'Skipped' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                'bg-gray-500/20 text-gray-400'
+                                              }`}>
+                                                {note.status}
+                                              </span>
                                             </div>
-                                            <span className="text-xs font-medium text-white">{note.testerName}</span>
-                                            <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                              note.status === 'Pass' ? 'bg-green-500/20 text-green-400' :
-                                              note.status === 'Fail' ? 'bg-red-500/20 text-red-400' :
-                                              note.status === 'Skipped' ? 'bg-yellow-500/20 text-yellow-400' :
-                                              'bg-gray-500/20 text-gray-400'
-                                            }`}>
-                                              {note.status}
-                                            </span>
+                                            <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+                                              {note.notes}
+                                            </p>
                                           </div>
-                                          <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-                                            {note.notes}
-                                          </p>
-                                        </div>
-                                      ))}
+                                        ))}
+                                      </div>
                                     </div>
                                   </div>
                                 )}
@@ -520,46 +521,47 @@ export default function ProjectOverviewPage() {
                                   />
                                 </svg>
                                 {hasAttachments(testCase) && (
-                                  <div className="absolute bottom-full right-0 mb-2 w-80
-                                                  bg-dark-secondary border border-dark-border rounded-lg shadow-2xl z-50
+                                  <div className="absolute bottom-full right-0 pb-2
                                                   opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity">
-                                    <div className="px-3 py-2 border-b border-dark-border flex items-center justify-between">
-                                      <span className="text-xs font-semibold text-gray-400">
-                                        Attachments ({getAttachmentCount(testCase)})
-                                      </span>
-                                      <span className="text-xs text-gray-500">Click to view full size</span>
-                                    </div>
-                                    <div className="p-2 max-h-72 overflow-y-auto">
-                                      <div className="grid grid-cols-3 gap-2">
-                                        {getAllAttachments(testCase).map((att, idx) => (
-                                          <div key={idx} className="relative group/img">
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setLightboxImage(att.url);
-                                              }}
-                                              className="w-full aspect-square rounded overflow-hidden border border-dark-border
-                                                         hover:border-purple-500 transition-colors cursor-pointer"
-                                            >
-                                              <img
-                                                src={att.url}
-                                                alt={att.fileName}
-                                                className="w-full h-full object-cover"
-                                                loading="lazy"
-                                              />
-                                            </button>
-                                            <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-1 py-0.5
-                                                            opacity-0 group-hover/img:opacity-100 transition-opacity">
-                                              <div className="flex items-center gap-1">
-                                                <div
-                                                  className="w-3 h-3 rounded-full flex-shrink-0"
-                                                  style={{ backgroundColor: att.testerColor }}
+                                    <div className="w-80 bg-dark-secondary border border-dark-border rounded-lg shadow-2xl">
+                                      <div className="px-3 py-2 border-b border-dark-border flex items-center justify-between">
+                                        <span className="text-xs font-semibold text-gray-400">
+                                          Attachments ({getAttachmentCount(testCase)})
+                                        </span>
+                                        <span className="text-xs text-gray-500">Click to view full size</span>
+                                      </div>
+                                      <div className="p-2 max-h-72 overflow-y-auto">
+                                        <div className="grid grid-cols-3 gap-2">
+                                          {getAllAttachments(testCase).map((att, idx) => (
+                                            <div key={idx} className="relative group/img">
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setLightboxImage(att.url);
+                                                }}
+                                                className="w-full aspect-square rounded overflow-hidden border border-dark-border
+                                                           hover:border-purple-500 transition-colors cursor-pointer"
+                                              >
+                                                <img
+                                                  src={att.url}
+                                                  alt={att.fileName}
+                                                  className="w-full h-full object-cover"
+                                                  loading="lazy"
                                                 />
-                                                <span className="text-[10px] text-white truncate">{att.testerName}</span>
+                                              </button>
+                                              <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-1 py-0.5
+                                                              opacity-0 group-hover/img:opacity-100 transition-opacity">
+                                                <div className="flex items-center gap-1">
+                                                  <div
+                                                    className="w-3 h-3 rounded-full flex-shrink-0"
+                                                    style={{ backgroundColor: att.testerColor }}
+                                                  />
+                                                  <span className="text-[10px] text-white truncate">{att.testerName}</span>
+                                                </div>
                                               </div>
                                             </div>
-                                          </div>
-                                        ))}
+                                          ))}
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
