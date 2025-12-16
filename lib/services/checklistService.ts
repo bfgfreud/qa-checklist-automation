@@ -585,6 +585,7 @@ export const checklistService = {
         testcase_title: input.testcaseTitle, // COPIED data
         testcase_description: input.testcaseDescription || null, // COPIED data
         testcase_priority: input.testcasePriority || 'Medium', // COPIED data
+        testcase_image_url: input.testcaseImageUrl || null, // Custom testcase image
         is_custom: true, // Custom testcase flag
         tester_id: testerId,
         status: 'Pending' as const,

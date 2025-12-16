@@ -76,7 +76,11 @@ export const addCustomTestcaseSchema = z.object({
     .nullable(),
   testcasePriority: z.enum(['High', 'Medium', 'Low'], {
     message: 'Priority must be High, Medium, or Low'
-  }).default('Medium')
+  }).default('Medium'),
+  testcaseImageUrl: z.string()
+    .url('Invalid image URL')
+    .optional()
+    .nullable()
 })
 
 /**

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { TestCase, Priority } from '@/types/module';
 import { Button } from '@/components/ui/Button';
 
@@ -12,8 +12,11 @@ interface AddTestCaseDialogProps {
   isCustomModule: boolean;
   availableTestCases: TestCase[]; // For custom modules: all library testcases, For regular: removed testcases
   onAddTestCases: (testCaseIds: string[]) => void;
-  onCreateCustomTestCase: (data: { title: string; description?: string; priority: Priority }) => void;
+  onCreateCustomTestCase: (data: { title: string; description?: string; priority: Priority; imageFile?: File }) => void;
 }
+
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 type ViewMode = 'choice' | 'create' | 'addBack';
 
@@ -37,6 +40,12 @@ export function AddTestCaseDialog({
     description: '',
     priority: 'Medium' as Priority,
   });
+
+  // Image upload state
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -69,7 +78,10 @@ export function AddTestCaseDialog({
       return;
     }
 
-    onCreateCustomTestCase(customTestCase);
+    onCreateCustomTestCase({
+      ...customTestCase,
+      imageFile: selectedImage || undefined,
+    });
     handleClose();
   };
 
@@ -78,6 +90,7 @@ export function AddTestCaseDialog({
     setSelectedTestCaseIds(new Set());
     setSearchQuery('');
     setCustomTestCase({ title: '', description: '', priority: 'Medium' });
+    resetImageState();
     onClose();
   };
 
@@ -86,6 +99,48 @@ export function AddTestCaseDialog({
     setSelectedTestCaseIds(new Set());
     setSearchQuery('');
     setCustomTestCase({ title: '', description: '', priority: 'Medium' });
+    resetImageState();
+  };
+
+  // Image handling functions
+  const resetImageState = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    setImageError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setImageError('Please upload a JPEG, PNG, GIF, or WebP image');
+      return;
+    }
+
+    // Validate file size
+    if (file.size > MAX_IMAGE_SIZE) {
+      setImageError('File size must be less than 5MB');
+      return;
+    }
+
+    setImageError(null);
+    setSelectedImage(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    resetImageState();
   };
 
   // Filter testcases by search query
@@ -226,14 +281,66 @@ export function AddTestCaseDialog({
                 </div>
               </div>
 
-              {/* Reference Image Note */}
-              <div className="flex items-center gap-2 p-3 bg-dark-elevated border border-dark-border rounded-lg">
-                <svg className="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <p className="text-xs text-gray-400">
-                  Reference image can be added after creating the test case
-                </p>
+              {/* Reference Image Upload */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-300 mb-2">
+                  Reference Image <span className="text-gray-500">(Optional)</span>
+                </label>
+                <div className="flex items-start gap-3">
+                  {/* Image Preview / Upload Area */}
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`
+                      w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center
+                      cursor-pointer transition-all flex-shrink-0 overflow-hidden
+                      ${imagePreview ? 'border-primary-500' : 'border-dark-border hover:border-primary-500'}
+                    `}
+                  >
+                    {imagePreview ? (
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <svg className="w-6 h-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </div>
+
+                  {/* Info & Actions */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-400 mb-1">
+                      {imagePreview ? 'Click to change' : 'Click to upload'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      JPEG, PNG, GIF, WebP (max 5MB)
+                    </p>
+                    {imagePreview && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveImage();
+                        }}
+                        className="mt-1 text-xs text-red-400 hover:text-red-300 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {imageError && (
+                  <p className="mt-1.5 text-xs text-red-400">{imageError}</p>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ALLOWED_IMAGE_TYPES.join(',')}
+                  onChange={handleImageSelect}
+                  className="hidden"
+                />
               </div>
             </form>
           )}

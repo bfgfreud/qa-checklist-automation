@@ -796,11 +796,38 @@ export default function ProjectEditPage() {
   };
 
   // Create custom testcase and add to module
-  const handleCreateCustomTestCase = (
+  const handleCreateCustomTestCase = async (
     moduleId: string,
-    data: { title: string; description?: string; priority: Priority }
+    data: { title: string; description?: string; priority: Priority; imageFile?: File }
   ) => {
-    console.log('[ADD TESTCASE] Creating custom testcase:', { moduleId, title: data.title, priority: data.priority });
+    console.log('[ADD TESTCASE] Creating custom testcase:', { moduleId, title: data.title, priority: data.priority, hasImage: !!data.imageFile });
+
+    let imageUrl: string | undefined = undefined;
+
+    // Upload image if provided
+    if (data.imageFile) {
+      try {
+        const formData = new FormData();
+        formData.append('file', data.imageFile);
+
+        // Upload to custom testcase images (no testcase ID yet)
+        const uploadRes = await fetch('/api/custom-testcase-images', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (uploadRes.ok) {
+          const uploadResult = await uploadRes.json();
+          imageUrl = uploadResult.imageUrl;
+          console.log('[ADD TESTCASE] Image uploaded:', imageUrl);
+        } else {
+          console.error('[ADD TESTCASE] Image upload failed');
+        }
+      } catch (err) {
+        console.error('[ADD TESTCASE] Image upload error:', err);
+      }
+    }
+
     setDraftModules((prev) =>
       prev.map((m) => {
         if (m.id !== moduleId) return m;
@@ -812,6 +839,7 @@ export default function ProjectEditPage() {
           testcaseTitle: data.title,
           testcaseDescription: data.description,
           testcasePriority: data.priority,
+          testcaseImageUrl: imageUrl,
           status: 'Pending' as const,
           notes: undefined,
           testedBy: undefined,
@@ -820,7 +848,7 @@ export default function ProjectEditPage() {
           updatedAt: new Date().toISOString(),
         };
 
-        console.log('[ADD TESTCASE] Added custom testcase to module:', { moduleId, testcaseId: customTestResult.id, title: customTestResult.testcaseTitle });
+        console.log('[ADD TESTCASE] Added custom testcase to module:', { moduleId, testcaseId: customTestResult.id, title: customTestResult.testcaseTitle, imageUrl });
         return {
           ...m,
           testResults: [...(m.testResults || []), customTestResult],
@@ -1173,6 +1201,7 @@ export default function ProjectEditPage() {
                 testcaseTitle: testcase.testcaseTitle,
                 testcaseDescription: testcase.testcaseDescription,
                 testcasePriority: testcase.testcasePriority,
+                testcaseImageUrl: testcase.testcaseImageUrl,
               }),
             });
 
@@ -1230,6 +1259,7 @@ export default function ProjectEditPage() {
                     testcaseTitle: testcase.testcaseTitle,
                     testcaseDescription: testcase.testcaseDescription,
                     testcasePriority: testcase.testcasePriority,
+                    testcaseImageUrl: testcase.testcaseImageUrl,
                   }),
                 });
 
@@ -1298,6 +1328,7 @@ export default function ProjectEditPage() {
               testcaseTitle: testcase.testcaseTitle,
               testcaseDescription: testcase.testcaseDescription,
               testcasePriority: testcase.testcasePriority,
+              testcaseImageUrl: testcase.testcaseImageUrl,
             };
             console.log('[SAVE DEBUG] Sending custom testcase to API:', payload);
 
