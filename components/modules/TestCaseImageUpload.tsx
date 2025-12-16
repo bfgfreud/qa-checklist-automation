@@ -173,6 +173,25 @@ export const TestCaseImageUpload: React.FC<TestCaseImageUploadProps> = ({
   }
 
   // Full mode for forms
+  // For new test cases (no testCaseId), show message to save first
+  if (!testCaseId) {
+    return (
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Reference Image (Optional)
+        </label>
+        <div className="flex items-center gap-2 p-3 bg-dark-elevated border border-dark-border rounded-lg">
+          <svg className="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <p className="text-xs text-gray-400">
+            Save the test case first, then edit to add an image
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mb-4">
       <label className="block text-sm font-medium text-gray-300 mb-2">
