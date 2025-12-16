@@ -118,6 +118,7 @@ export default function ModulesPage() {
             description: tc.description,
             priority: tc.priority,
             order: tc.order_index,
+            imageUrl: tc.image_url,
             createdAt: tc.created_at,
             updatedAt: tc.updated_at,
           }))
