@@ -135,6 +135,7 @@ export const checklistService = {
           testcase_title,
           testcase_description,
           testcase_priority,
+          testcase_image_url,
           is_custom,
           status,
           notes,
@@ -162,10 +163,13 @@ export const checklistService = {
           acc[moduleId] = []
         }
 
-        // Get image_url from joined base_testcases (for library testcases)
+        // Get image_url: for custom testcases use testcase_image_url, for library use base_testcases.image_url
         const baseTestcase = Array.isArray(result.base_testcases)
           ? result.base_testcases[0]
           : result.base_testcases
+        const imageUrl = result.is_custom
+          ? result.testcase_image_url  // Custom testcase: use stored image URL
+          : baseTestcase?.image_url     // Library testcase: use joined image URL
 
         acc[moduleId].push({
           id: result.id,
@@ -174,7 +178,7 @@ export const checklistService = {
           testcaseTitle: result.testcase_title, // Use copied data
           testcaseDescription: result.testcase_description || undefined, // Use copied data
           testcasePriority: (result.testcase_priority || 'Medium') as 'High' | 'Medium' | 'Low', // Use copied data
-          testcaseImageUrl: baseTestcase?.image_url || undefined, // Reference image from library
+          testcaseImageUrl: imageUrl || undefined,
           status: result.status,
           notes: result.notes || undefined,
           testedBy: result.tested_by || undefined,
@@ -432,6 +436,7 @@ export const checklistService = {
           testcase_title,
           testcase_description,
           testcase_priority,
+          testcase_image_url,
           is_custom,
           status,
           notes,
@@ -450,6 +455,11 @@ export const checklistService = {
           ? result.base_testcases[0]
           : result.base_testcases
 
+        // Custom testcases use testcase_image_url, library testcases use base_testcases.image_url
+        const imageUrl = result.is_custom
+          ? result.testcase_image_url
+          : baseTestcase?.image_url
+
         return {
           id: result.id,
           projectChecklistModuleId: result.project_checklist_module_id,
@@ -457,7 +467,8 @@ export const checklistService = {
           testcaseTitle: result.testcase_title, // Use copied data
           testcaseDescription: result.testcase_description || undefined, // Use copied data
           testcasePriority: (result.testcase_priority || 'Medium') as 'High' | 'Medium' | 'Low', // Use copied data
-          testcaseImageUrl: baseTestcase?.image_url || undefined, // Reference image from library
+          testcaseImageUrl: imageUrl || undefined, // Reference image
+          isCustom: result.is_custom || false,
           status: result.status,
           notes: result.notes || undefined,
           testedBy: result.tested_by || undefined,
@@ -598,6 +609,8 @@ export const checklistService = {
         testcaseTitle: result.testcase_title,
         testcaseDescription: result.testcase_description || undefined,
         testcasePriority: (result.testcase_priority || 'Medium') as 'High' | 'Medium' | 'Low',
+        testcaseImageUrl: result.testcase_image_url || undefined, // Custom testcase image
+        isCustom: true,
         status: result.status,
         notes: result.notes || undefined,
         testedBy: result.tested_by || undefined,
@@ -749,6 +762,11 @@ export const checklistService = {
           id,
           project_checklist_module_id,
           testcase_id,
+          testcase_title,
+          testcase_description,
+          testcase_priority,
+          testcase_image_url,
+          is_custom,
           status,
           notes,
           tested_by,
@@ -756,9 +774,6 @@ export const checklistService = {
           created_at,
           updated_at,
           base_testcases (
-            title,
-            description,
-            priority,
             image_url
           ),
           project_checklist_modules!inner (
@@ -772,7 +787,7 @@ export const checklistService = {
         return { success: false, error: 'Test result not found or failed to update' }
       }
 
-      const testcase = Array.isArray(data.base_testcases)
+      const baseTestcase = Array.isArray(data.base_testcases)
         ? data.base_testcases[0]
         : data.base_testcases
 
@@ -783,14 +798,20 @@ export const checklistService = {
 
       const projectId = moduleData?.project_id
 
+      // Custom testcases use testcase_image_url, library testcases use base_testcases.image_url
+      const imageUrl = data.is_custom
+        ? data.testcase_image_url
+        : baseTestcase?.image_url
+
       const result: ChecklistTestResult = {
         id: data.id,
         projectChecklistModuleId: data.project_checklist_module_id,
         testcaseId: data.testcase_id,
-        testcaseTitle: testcase?.title || 'Unknown',
-        testcaseDescription: testcase?.description || undefined,
-        testcasePriority: (testcase?.priority || 'Medium') as 'High' | 'Medium' | 'Low',
-        testcaseImageUrl: testcase?.image_url || undefined,
+        testcaseTitle: data.testcase_title, // Use copied data
+        testcaseDescription: data.testcase_description || undefined, // Use copied data
+        testcasePriority: (data.testcase_priority || 'Medium') as 'High' | 'Medium' | 'Low', // Use copied data
+        testcaseImageUrl: imageUrl || undefined,
+        isCustom: data.is_custom || false,
         status: data.status,
         notes: data.notes || undefined,
         testedBy: data.tested_by || undefined,
@@ -934,6 +955,7 @@ export const checklistService = {
           testcase_title,
           testcase_description,
           testcase_priority,
+          testcase_image_url,
           is_custom,
           tester_id,
           status,
@@ -1041,13 +1063,19 @@ export const checklistService = {
             // For custom testcases, use the copied data stored in checklist_test_results
             const isCustom = firstResult.is_custom || !testcase
 
+            // Custom testcases use testcase_image_url, library testcases use base_testcases.image_url
+            const imageUrl = isCustom
+              ? firstResult.testcase_image_url
+              : testcase?.image_url
+
             return {
               testCase: {
                 id: testcase?.id || testcaseId,
                 title: isCustom ? (firstResult.testcase_title || 'Unknown') : (testcase?.title || 'Unknown'),
                 description: isCustom ? firstResult.testcase_description : testcase?.description,
                 priority: (isCustom ? (firstResult.testcase_priority || 'Medium') : (testcase?.priority || 'Medium')) as 'High' | 'Medium' | 'Low',
-                imageUrl: testcase?.image_url || undefined // Reference image from library
+                imageUrl: imageUrl || undefined,
+                isCustom: isCustom
               },
               results: testerResults.map((r: any) => {
                 const { _displayOrder, ...rest } = r;

@@ -974,7 +974,7 @@ export default function ProjectEditPage() {
               !tr.testcaseId.startsWith('custom-tc-');
 
             draftTestcaseOrder.push({
-              testcaseId: isRealTestcaseId ? tr.testcaseId : null,
+              testcaseId: isRealTestcaseId ? (tr.testcaseId ?? null) : null,
               testcaseTitle: tr.testcaseTitle
             });
           }
@@ -1022,7 +1022,7 @@ export default function ProjectEditPage() {
               !tr.testcaseId.startsWith('custom-tc-');
 
             originalTestcaseOrder.push({
-              testcaseId: isRealTestcaseId ? tr.testcaseId : null,
+              testcaseId: isRealTestcaseId ? (tr.testcaseId ?? null) : null,
               testcaseTitle: tr.testcaseTitle
             });
           }

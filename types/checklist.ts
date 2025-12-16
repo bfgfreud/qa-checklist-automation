@@ -30,11 +30,12 @@ export interface ProjectChecklistModule {
 export interface ChecklistTestResult {
   id: string;
   projectChecklistModuleId: string;
-  testcaseId: string;
+  testcaseId?: string; // Optional for custom testcases
   testcaseTitle: string; // Denormalized from base_testcases for display
   testcaseDescription?: string; // Denormalized from base_testcases
   testcasePriority: 'High' | 'Medium' | 'Low'; // Denormalized from base_testcases
-  testcaseImageUrl?: string; // Reference image from base_testcases
+  testcaseImageUrl?: string; // Reference image (from base_testcases or custom)
+  isCustom?: boolean; // True if this is a custom testcase not from library
   status: TestStatus;
   notes?: string;
   testedBy?: string;
@@ -150,6 +151,7 @@ export interface TestCaseWithResults {
     description?: string;
     priority: 'High' | 'Medium' | 'Low';
     imageUrl?: string; // Reference image
+    isCustom?: boolean; // True if this is a custom testcase not from library
   };
   results: TestResultWithTester[];
   overallStatus: TestStatus; // Weakest status across all testers
