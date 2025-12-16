@@ -17,6 +17,8 @@ export interface Project {
   createdBy?: string;
   createdAt: string;
   updatedAt: string;
+  deleted_at?: string | null; // Archive timestamp - null means active
+  deleted_by?: string | null; // Who archived the project
 }
 
 export interface CreateProjectDto {

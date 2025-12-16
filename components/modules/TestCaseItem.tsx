@@ -6,6 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { TestCase, Module } from '@/types/module';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { TruncatedText } from '@/components/ui/TruncatedText';
 
 export interface TestCaseItemProps {
   testCase: TestCase;
@@ -61,7 +62,10 @@ export const TestCaseItem: React.FC<TestCaseItemProps> = ({ testCase, onEdit, on
           <div className={`flex items-start justify-between ${isCompact ? 'gap-1.5' : 'gap-2'}`}>
             <div className="flex-1 min-w-0">
               <h4 className={`font-semibold text-white flex items-center gap-1.5 ${isCompact ? 'text-xs' : 'text-sm'}`}>
-                <span className="truncate">{testCase.title}</span>
+                <TruncatedText
+                  text={testCase.title}
+                  className="flex-1 min-w-0"
+                />
                 {testCaseIsModified && (
                   <span className="inline-flex items-center gap-0.5 text-xs font-medium px-1 py-0.5 bg-orange-500/20 text-orange-400 rounded-full flex-shrink-0">
                     <div className="w-1 h-1 bg-orange-500 rounded-full"></div>
@@ -70,7 +74,11 @@ export const TestCaseItem: React.FC<TestCaseItemProps> = ({ testCase, onEdit, on
                 )}
               </h4>
               {!isCompact && testCase.description && (
-                <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{testCase.description}</p>
+                <TruncatedText
+                  text={testCase.description}
+                  as="p"
+                  className="text-xs text-gray-400 mt-0.5"
+                />
               )}
             </div>
             <Badge priority={testCase.priority} />

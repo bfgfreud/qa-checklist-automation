@@ -8,13 +8,14 @@ import { CreateProjectInput, UpdateProjectInput } from '../validations/project.s
 
 export const projectService = {
   /**
-   * Get all projects
+   * Get all active (non-archived) projects
    */
   async getAllProjects(): Promise<{ success: boolean; data?: Project[]; error?: string }> {
     try {
       const { data, error } = await supabase
         .from('test_projects')
         .select('*')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -25,6 +26,29 @@ export const projectService = {
       return { success: true, data: (data || []) as Project[] }
     } catch (error) {
       console.error('Unexpected error in getAllProjects:', error)
+      return { success: false, error: 'Internal server error' }
+    }
+  },
+
+  /**
+   * Get all archived projects
+   */
+  async getArchivedProjects(): Promise<{ success: boolean; data?: Project[]; error?: string }> {
+    try {
+      const { data, error } = await supabase
+        .from('test_projects')
+        .select('*')
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching archived projects:', error)
+        return { success: false, error: 'Failed to fetch archived projects' }
+      }
+
+      return { success: true, data: (data || []) as Project[] }
+    } catch (error) {
+      console.error('Unexpected error in getArchivedProjects:', error)
       return { success: false, error: 'Internal server error' }
     }
   },
@@ -124,25 +148,107 @@ export const projectService = {
   },
 
   /**
-   * Delete a project (cascades to related checklists)
+   * Archive a project (soft delete)
    */
-  async deleteProject(id: string): Promise<{ success: boolean; error?: string }> {
+  async archiveProject(id: string, deletedBy?: string): Promise<{ success: boolean; data?: Project; error?: string }> {
     try {
+      const { data, error } = await supabase
+        .from('test_projects')
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: deletedBy || null
+        })
+        .eq('id', id)
+        .is('deleted_at', null) // Only archive if not already archived
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error archiving project:', error)
+        return { success: false, error: 'Failed to archive project' }
+      }
+
+      return { success: true, data: data as Project }
+    } catch (error) {
+      console.error('Unexpected error in archiveProject:', error)
+      return { success: false, error: 'Internal server error' }
+    }
+  },
+
+  /**
+   * Restore an archived project
+   */
+  async restoreProject(id: string): Promise<{ success: boolean; data?: Project; error?: string }> {
+    try {
+      const { data, error } = await supabase
+        .from('test_projects')
+        .update({
+          deleted_at: null,
+          deleted_by: null
+        })
+        .eq('id', id)
+        .not('deleted_at', 'is', null) // Only restore if archived
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error restoring project:', error)
+        return { success: false, error: 'Failed to restore project' }
+      }
+
+      return { success: true, data: data as Project }
+    } catch (error) {
+      console.error('Unexpected error in restoreProject:', error)
+      return { success: false, error: 'Internal server error' }
+    }
+  },
+
+  /**
+   * Permanently delete an archived project (requires project to be archived first)
+   */
+  async permanentDeleteProject(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // First verify the project is archived
+      const { data: project, error: checkError } = await supabase
+        .from('test_projects')
+        .select('deleted_at')
+        .eq('id', id)
+        .single()
+
+      if (checkError || !project) {
+        return { success: false, error: 'Project not found' }
+      }
+
+      if (!project.deleted_at) {
+        return { success: false, error: 'Project must be archived before permanent deletion' }
+      }
+
+      // Proceed with permanent deletion (cascades to related data)
       const { error } = await supabase
         .from('test_projects')
         .delete()
         .eq('id', id)
 
       if (error) {
-        console.error('Error deleting project:', error)
-        return { success: false, error: 'Failed to delete project' }
+        console.error('Error permanently deleting project:', error)
+        return { success: false, error: 'Failed to permanently delete project' }
       }
 
       return { success: true }
     } catch (error) {
-      console.error('Unexpected error in deleteProject:', error)
+      console.error('Unexpected error in permanentDeleteProject:', error)
       return { success: false, error: 'Internal server error' }
     }
+  },
+
+  /**
+   * Delete a project - now archives instead of hard delete
+   * @deprecated Use archiveProject instead
+   */
+  async deleteProject(id: string, deletedBy?: string): Promise<{ success: boolean; error?: string }> {
+    // Redirect to archive for backward compatibility
+    const result = await this.archiveProject(id, deletedBy)
+    return { success: result.success, error: result.error }
   },
 
   /**

@@ -117,7 +117,8 @@ export async function PUT(
 
 /**
  * DELETE /api/projects/[id]
- * Delete a project (cascades to related checklists)
+ * Archive a project (soft delete)
+ * Query params: ?deletedBy=name (optional)
  */
 export async function DELETE(
   request: NextRequest,
@@ -125,6 +126,8 @@ export async function DELETE(
 ) {
   try {
     const id = params.projectId
+    const { searchParams } = new URL(request.url)
+    const deletedBy = searchParams.get('deletedBy') || undefined
 
     // Validate UUID format
     const uuidSchema = z.string().uuid()
@@ -137,7 +140,7 @@ export async function DELETE(
       )
     }
 
-    const result = await projectService.deleteProject(id)
+    const result = await projectService.deleteProject(id, deletedBy)
 
     if (!result.success) {
       return NextResponse.json(
@@ -147,7 +150,7 @@ export async function DELETE(
     }
 
     return NextResponse.json(
-      { success: true, message: 'Project deleted successfully' },
+      { success: true, message: 'Project archived successfully' },
       { status: 200 }
     )
   } catch (error) {

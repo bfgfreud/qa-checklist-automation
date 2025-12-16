@@ -23,6 +23,7 @@ import { Project } from '@/types/project';
 import { Module, Priority, TestCase } from '@/types/module';
 import { ChecklistModuleWithResults } from '@/types/checklist';
 import { Button } from '@/components/ui/Button';
+import { TruncatedText } from '@/components/ui/TruncatedText';
 import { AddModuleDialog } from '@/components/checklists/AddModuleDialog';
 import { AddTestCaseDialog } from '@/components/checklists/AddTestCaseDialog';
 import { ImportChecklistDialog } from '@/components/checklists/ImportChecklistDialog';
@@ -246,14 +247,18 @@ function SortableTestCase({
         </svg>
       </button>
 
-      <div className="flex-1">
-        <div className="text-sm text-white">
-          {testResult.testcaseTitle}
-        </div>
+      <div className="flex-1 min-w-0">
+        <TruncatedText
+          text={testResult.testcaseTitle}
+          className="text-sm text-white"
+          as="div"
+        />
         {testResult.testcaseDescription && (
-          <div className="text-xs text-gray-500 mt-0.5">
-            {testResult.testcaseDescription}
-          </div>
+          <TruncatedText
+            text={testResult.testcaseDescription}
+            className="text-xs text-gray-500 mt-0.5"
+            as="div"
+          />
         )}
       </div>
       <span
@@ -1593,14 +1598,19 @@ export default function ProjectEditPage() {
                         className="p-3 rounded-lg border transition-colors bg-dark-bg border-dark-border hover:border-primary-500"
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-white text-sm">
-                              {module.name}
-                            </h3>
+                          <div className="flex-1 min-w-0">
+                            <TruncatedText
+                              text={module.name}
+                              className="font-semibold text-white text-sm"
+                              as="div"
+                            />
                             {module.description && (
-                              <p className="text-xs text-gray-400 mt-1 line-clamp-2">
-                                {module.description}
-                              </p>
+                              <TruncatedText
+                                text={module.description}
+                                maxLines={2}
+                                className="text-xs text-gray-400 mt-1"
+                                as="p"
+                              />
                             )}
                             <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
                               <span>{module.testCases?.length || 0} tests</span>

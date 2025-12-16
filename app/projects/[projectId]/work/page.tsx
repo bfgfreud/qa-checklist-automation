@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { TesterAvatar } from '@/components/ui/TesterAvatar';
 import { ImageUploader } from '@/components/ui/ImageUploader';
 import { ImageGallery } from '@/components/ui/ImageGallery';
+import { TruncatedText } from '@/components/ui/TruncatedText';
 import { useCurrentTester } from '@/contexts/TesterContext';
 import { linkifyText } from '@/lib/utils/linkify';
 
@@ -1033,15 +1034,19 @@ export default function WorkingModePage() {
 
                                 {/* Title + Description (inline, same row) */}
                                 <div className="flex-1 flex items-baseline gap-2 min-w-0">
-                                  <h3 className="text-sm font-semibold text-white flex-shrink-0">
-                                    {testCase.testCase.title}
-                                  </h3>
+                                  <TruncatedText
+                                    text={testCase.testCase.title}
+                                    className="text-sm font-semibold text-white flex-shrink-0"
+                                    as="span"
+                                  />
                                   {testCase.testCase.description && (
                                     <>
                                       <span className="text-gray-600">|</span>
-                                      <p className="text-xs text-gray-400 truncate">
-                                        {testCase.testCase.description}
-                                      </p>
+                                      <TruncatedText
+                                        text={testCase.testCase.description}
+                                        className="text-xs text-gray-400"
+                                        as="p"
+                                      />
                                     </>
                                   )}
                                 </div>

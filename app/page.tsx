@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCurrentTester } from '@/contexts/TesterContext';
 import { Project } from '@/types/project';
 import { ProjectCard } from '@/components/projects/ProjectCard';
+import { ProjectListSkeleton } from '@/components/skeletons';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -25,35 +26,40 @@ export default function DashboardPage() {
         if (projectsResult.success) {
           const allProjects = projectsResult.data;
 
+          // Fetch all testers in parallel for better performance
+          const testerPromises = allProjects.map((proj: { id: string }) =>
+            fetch(`/api/projects/${proj.id}/testers`)
+              .then(res => res.json())
+              .then(result => ({ projectId: proj.id, testers: result.success ? result.data : [] }))
+              .catch(() => ({ projectId: proj.id, testers: [] }))
+          );
+
+          const testerResults = await Promise.all(testerPromises);
+
+          // Create a map for quick lookup
+          const testerMap = new Map(
+            testerResults.map(r => [r.projectId, r.testers])
+          );
+
           // Filter projects where current user is assigned
-          const assignedProjects: Project[] = [];
-
-          for (const proj of allProjects) {
-            const testersRes = await fetch(`/api/projects/${proj.id}/testers`);
-            const testersResult = await testersRes.json();
-
-            if (testersResult.success) {
-              const isAssigned = testersResult.data.some(
-                (t: { id: string }) => t.id === currentTester.id
-              );
-
-              if (isAssigned) {
-                assignedProjects.push({
-                  id: proj.id,
-                  name: proj.name,
-                  description: proj.description,
-                  version: proj.version,
-                  platform: proj.platform,
-                  status: proj.status,
-                  priority: proj.priority || 'Medium',
-                  dueDate: proj.due_date,
-                  createdBy: proj.created_by,
-                  createdAt: proj.created_at,
-                  updatedAt: proj.updated_at,
-                });
-              }
-            }
-          }
+          const assignedProjects: Project[] = allProjects
+            .filter((proj: { id: string }) => {
+              const testers = testerMap.get(proj.id) || [];
+              return testers.some((t: { id: string }) => t.id === currentTester.id);
+            })
+            .map((proj: Record<string, unknown>) => ({
+              id: proj.id as string,
+              name: proj.name as string,
+              description: proj.description as string | undefined,
+              version: proj.version as string | undefined,
+              platform: proj.platform as string | undefined,
+              status: proj.status as Project['status'],
+              priority: (proj.priority || 'Medium') as Project['priority'],
+              dueDate: proj.due_date as string | undefined,
+              createdBy: proj.created_by as string | undefined,
+              createdAt: proj.created_at as string,
+              updatedAt: proj.updated_at as string,
+            }));
 
           setMyProjects(assignedProjects);
         }
@@ -98,21 +104,7 @@ export default function DashboardPage() {
           </div>
 
           {loading ? (
-            // Loading skeleton
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(3)].map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-dark-secondary border border-dark-primary rounded-lg p-6 animate-pulse"
-                >
-                  <div className="h-6 w-32 bg-dark-elevated rounded mb-4"></div>
-                  <div className="h-4 w-20 bg-dark-elevated rounded mb-4"></div>
-                  <div className="h-2 bg-dark-elevated rounded mb-3"></div>
-                  <div className="h-4 w-24 bg-dark-elevated rounded mb-4"></div>
-                  <div className="h-10 bg-dark-elevated rounded"></div>
-                </div>
-              ))}
-            </div>
+            <ProjectListSkeleton count={3} />
           ) : myProjects.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {myProjects.map((project) => (

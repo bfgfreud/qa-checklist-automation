@@ -17,6 +17,8 @@ export interface Project {
   created_by: string | null
   created_at: string
   updated_at: string
+  deleted_at: string | null // Archive timestamp - null means active
+  deleted_by: string | null // Who archived the project
 }
 
 // ============================================
@@ -35,4 +37,6 @@ export interface ProjectRow {
   created_by: string | null
   created_at: string
   updated_at: string
+  deleted_at: string | null
+  deleted_by: string | null
 }

@@ -8,19 +8,70 @@ import { Project, CreateProjectDto, UpdateProjectDto, ProjectStatus } from '@/ty
 import { Button } from '@/components/ui/Button';
 import { ProjectCard } from '@/components/projects/ProjectCard';
 import { ProjectForm } from '@/components/projects/ProjectForm';
+import { ProjectListSkeleton } from '@/components/skeletons';
+import { useCurrentTester } from '@/contexts/TesterContext';
 
 type SortField = 'name' | 'dueDate' | 'createdAt' | 'status';
 type SortOrder = 'asc' | 'desc';
+type ViewMode = 'active' | 'archived';
 
 export default function ProjectsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { currentTester } = useCurrentTester();
+
+  // View mode: active or archived
+  const [viewMode, setViewMode] = useState<ViewMode>('active');
 
   // React Query hooks
   const { data: rawProjects, isLoading: loading, error: fetchError } = useProjects();
   const createProjectMutation = useCreateProject();
   const deleteProjectMutation = useDeleteProject();
   const updateProjectMutation = useUpdateProject();
+
+  // Archived projects state
+  const [archivedProjects, setArchivedProjects] = useState<Project[]>([]);
+  const [loadingArchived, setLoadingArchived] = useState(false);
+
+  // Fetch archived projects when view mode changes
+  useEffect(() => {
+    if (viewMode === 'archived') {
+      fetchArchivedProjects();
+    }
+  }, [viewMode]);
+
+  const fetchArchivedProjects = async () => {
+    setLoadingArchived(true);
+    try {
+      const res = await fetch('/api/projects/archive');
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success) {
+          // Transform to camelCase
+          const transformed = (result.data || []).map((proj: Record<string, unknown>) => ({
+            id: proj.id,
+            name: proj.name,
+            description: proj.description,
+            version: proj.version,
+            platform: proj.platform,
+            status: proj.status,
+            priority: proj.priority || 'Medium',
+            dueDate: proj.due_date || proj.dueDate,
+            createdBy: proj.created_by || proj.createdBy,
+            createdAt: proj.created_at || proj.createdAt,
+            updatedAt: proj.updated_at || proj.updatedAt,
+            deleted_at: proj.deleted_at,
+            deleted_by: proj.deleted_by,
+          })) as Project[];
+          setArchivedProjects(transformed);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching archived projects:', err);
+    } finally {
+      setLoadingArchived(false);
+    }
+  };
 
   // Transform projects from API format to frontend format
   const projects = useMemo(() => {
@@ -204,7 +255,7 @@ export default function ProjectsPage() {
   };
 
   const handleDeleteProject = (project: Project) => {
-    if (!confirm(`Are you sure you want to delete "${project.name}"?`)) {
+    if (!confirm(`Are you sure you want to archive "${project.name}"? You can restore it later from the archive.`)) {
       return;
     }
 
@@ -217,6 +268,52 @@ export default function ProjectsPage() {
     }
 
     setHasUnsavedChanges(true);
+  };
+
+  const handleRestoreProject = async (project: Project) => {
+    try {
+      const res = await fetch(`/api/projects/${project.id}/restore`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        success('Project restored successfully');
+        // Refresh both lists
+        fetchArchivedProjects();
+        queryClient.invalidateQueries({ queryKey: ['projects'] });
+      } else {
+        error('Failed to restore project');
+      }
+    } catch (err) {
+      console.error('Error restoring project:', err);
+      error('Failed to restore project');
+    }
+  };
+
+  const handlePermanentDeleteProject = async (project: Project) => {
+    if (!confirm(`Are you sure you want to PERMANENTLY delete "${project.name}"? This action cannot be undone!`)) {
+      return;
+    }
+
+    // Double confirmation for permanent delete
+    if (!confirm(`FINAL WARNING: This will permanently delete all test results, attachments, and data associated with "${project.name}". Continue?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/projects/${project.id}/permanent-delete`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        success('Project permanently deleted');
+        // Refresh archived list
+        fetchArchivedProjects();
+      } else {
+        error('Failed to permanently delete project');
+      }
+    } catch (err) {
+      console.error('Error permanently deleting project:', err);
+      error('Failed to permanently delete project');
+    }
   };
 
   /**
@@ -483,18 +580,53 @@ export default function ProjectsPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button
-              onClick={() => {
-                setEditingProject(undefined);
-                setIsProjectFormOpen(true);
-              }}
-            >
-              + New Project
-            </Button>
+            {/* View Mode Toggle */}
+            <div className="flex bg-dark-elevated rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('active')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'active'
+                    ? 'bg-primary-500 text-white'
+                    : 'text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                Active
+              </button>
+              <button
+                onClick={() => setViewMode('archived')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
+                  viewMode === 'archived'
+                    ? 'bg-gray-600 text-white'
+                    : 'text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+                Archive
+                {archivedProjects.length > 0 && (
+                  <span className="px-1.5 py-0.5 text-xs bg-gray-500 rounded-full">
+                    {archivedProjects.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {viewMode === 'active' && (
+              <Button
+                onClick={() => {
+                  setEditingProject(undefined);
+                  setIsProjectFormOpen(true);
+                }}
+              >
+                + New Project
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Search and Filters */}
+        {/* Search and Filters - Only show for active view */}
+        {viewMode === 'active' && (
         <div className="mb-6 space-y-4">
           {/* Search Bar */}
           <div className="relative">
@@ -641,81 +773,116 @@ export default function ProjectsPage() {
             </div>
           )}
         </div>
-
-        {/* Loading State */}
-        {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
-          </div>
-        ) : draftProjects.length === 0 ? (
-          /* Empty State */
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">📋</div>
-            <h3 className="text-2xl font-bold text-white mb-2">No projects yet</h3>
-            <p className="text-gray-400 mb-6">
-              Get started by creating your first test project
-            </p>
-            <Button
-              onClick={() => {
-                setEditingProject(undefined);
-                setIsProjectFormOpen(true);
-              }}
-            >
-              + Create Project
-            </Button>
-          </div>
-        ) : filteredProjects.length === 0 ? (
-          /* No Search Results */
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-2xl font-bold text-white mb-2">No projects found</h3>
-            <p className="text-gray-400 mb-6">
-              Try adjusting your search or filter criteria
-            </p>
-          </div>
-        ) : (
-          /* Projects Grid */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProjects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                onEdit={(p) => {
-                  setEditingProject(p);
-                  setIsProjectFormOpen(true);
-                }}
-                onDelete={handleDeleteProject}
-                isModified={isModified(project)}
-              />
-            ))}
-          </div>
         )}
 
-        {/* Stats */}
-        <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-dark-secondary border border-dark-primary rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
-            <div className="text-3xl font-bold text-primary-500 mb-2">{draftProjects.length}</div>
-            <div className="text-gray-400 text-sm">Total Projects</div>
-          </div>
-          <div className="bg-dark-secondary border border-dark-primary rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
-            <div className="text-3xl font-bold text-gray-500 mb-2">
-              {draftProjects.filter((p) => p.status === 'Draft').length}
+        {/* Content based on view mode */}
+        {viewMode === 'active' ? (
+          <>
+            {/* Loading State */}
+            {loading ? (
+              <ProjectListSkeleton count={6} />
+            ) : draftProjects.length === 0 ? (
+              /* Empty State */
+              <div className="text-center py-20">
+                <div className="text-6xl mb-4">📋</div>
+                <h3 className="text-2xl font-bold text-white mb-2">No projects yet</h3>
+                <p className="text-gray-400 mb-6">
+                  Get started by creating your first test project
+                </p>
+                <Button
+                  onClick={() => {
+                    setEditingProject(undefined);
+                    setIsProjectFormOpen(true);
+                  }}
+                >
+                  + Create Project
+                </Button>
+              </div>
+            ) : filteredProjects.length === 0 ? (
+              /* No Search Results */
+              <div className="text-center py-20">
+                <div className="text-6xl mb-4">🔍</div>
+                <h3 className="text-2xl font-bold text-white mb-2">No projects found</h3>
+                <p className="text-gray-400 mb-6">
+                  Try adjusting your search or filter criteria
+                </p>
+              </div>
+            ) : (
+              /* Projects Grid */
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredProjects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    onEdit={(p) => {
+                      setEditingProject(p);
+                      setIsProjectFormOpen(true);
+                    }}
+                    onDelete={handleDeleteProject}
+                    isModified={isModified(project)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          /* Archived Projects View */
+          <>
+            {loadingArchived ? (
+              <ProjectListSkeleton count={3} />
+            ) : archivedProjects.length === 0 ? (
+              <div className="text-center py-20">
+                <div className="text-6xl mb-4">📦</div>
+                <h3 className="text-2xl font-bold text-white mb-2">No archived projects</h3>
+                <p className="text-gray-400 mb-6">
+                  Archived projects will appear here
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {archivedProjects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    onEdit={() => {}}
+                    onDelete={() => {}}
+                    onRestore={handleRestoreProject}
+                    onPermanentDelete={handlePermanentDeleteProject}
+                    isArchived={true}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Stats - Only show for active view */}
+        {viewMode === 'active' && (
+          <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-dark-secondary border border-dark-primary rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
+              <div className="text-3xl font-bold text-primary-500 mb-2">{draftProjects.length}</div>
+              <div className="text-gray-400 text-sm">Total Projects</div>
             </div>
-            <div className="text-gray-400 text-sm">Draft</div>
-          </div>
-          <div className="bg-dark-secondary border border-dark-primary rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
-            <div className="text-3xl font-bold text-blue-500 mb-2">
-              {draftProjects.filter((p) => p.status === 'In Progress').length}
+            <div className="bg-dark-secondary border border-dark-primary rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
+              <div className="text-3xl font-bold text-gray-500 mb-2">
+                {draftProjects.filter((p) => p.status === 'Draft').length}
+              </div>
+              <div className="text-gray-400 text-sm">Draft</div>
             </div>
-            <div className="text-gray-400 text-sm">In Progress</div>
-          </div>
-          <div className="bg-dark-secondary border border-dark-primary rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
-            <div className="text-3xl font-bold text-green-500 mb-2">
-              {draftProjects.filter((p) => p.status === 'Completed').length}
+            <div className="bg-dark-secondary border border-dark-primary rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
+              <div className="text-3xl font-bold text-blue-500 mb-2">
+                {draftProjects.filter((p) => p.status === 'In Progress').length}
+              </div>
+              <div className="text-gray-400 text-sm">In Progress</div>
             </div>
-            <div className="text-gray-400 text-sm">Completed</div>
+            <div className="bg-dark-secondary border border-dark-primary rounded-lg p-6 text-center hover:border-primary-500 transition-colors">
+              <div className="text-3xl font-bold text-green-500 mb-2">
+                {draftProjects.filter((p) => p.status === 'Completed').length}
+              </div>
+              <div className="text-gray-400 text-sm">Completed</div>
+            </div>
           </div>
-        </div>
+        )}
       </main>
 
       {/* Modals */}
