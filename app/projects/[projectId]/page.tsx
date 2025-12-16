@@ -8,6 +8,7 @@ import { ChecklistModuleWithMultiTesterResults, TestCaseWithResults } from '@/ty
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { TesterList } from '@/components/ui/TesterList';
 import { Button } from '@/components/ui/Button';
+import { ImageIndicator } from '@/components/ui/ImageIndicator';
 import { format } from 'date-fns';
 
 export default function ProjectOverviewPage() {
@@ -448,6 +449,15 @@ export default function ProjectOverviewPage() {
                                   </div>
                                 )}
                               </div>
+
+                              {/* Reference Image */}
+                              {testCase.testCase.imageUrl && (
+                                <ImageIndicator
+                                  imageUrl={testCase.testCase.imageUrl}
+                                  alt={`${testCase.testCase.title} reference`}
+                                  size="sm"
+                                />
+                              )}
 
                               {/* Priority */}
                               <span className={`text-xs px-2 py-0.5 rounded ${

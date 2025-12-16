@@ -142,7 +142,10 @@ export const checklistService = {
           tested_at,
           created_at,
           updated_at,
-          display_order
+          display_order,
+          base_testcases (
+            image_url
+          )
         `)
         .in('project_checklist_module_id', (checklistModules || []).map(m => m.id))
         .order('display_order', { ascending: true })
@@ -159,6 +162,11 @@ export const checklistService = {
           acc[moduleId] = []
         }
 
+        // Get image_url from joined base_testcases (for library testcases)
+        const baseTestcase = Array.isArray(result.base_testcases)
+          ? result.base_testcases[0]
+          : result.base_testcases
+
         acc[moduleId].push({
           id: result.id,
           projectChecklistModuleId: result.project_checklist_module_id,
@@ -166,6 +174,7 @@ export const checklistService = {
           testcaseTitle: result.testcase_title, // Use copied data
           testcaseDescription: result.testcase_description || undefined, // Use copied data
           testcasePriority: (result.testcase_priority || 'Medium') as 'High' | 'Medium' | 'Low', // Use copied data
+          testcaseImageUrl: baseTestcase?.image_url || undefined, // Reference image from library
           status: result.status,
           notes: result.notes || undefined,
           testedBy: result.tested_by || undefined,
@@ -266,7 +275,7 @@ export const checklistService = {
         // Fetch testcases from library (to be copied)
         const { data: libraryTestcases, error: testcasesError } = await supabase
           .from('base_testcases')
-          .select('id, title, description, priority')
+          .select('id, title, description, priority, image_url')
           .eq('module_id', input.moduleId)
           .order('order_index', { ascending: true })
 
@@ -429,11 +438,18 @@ export const checklistService = {
           tested_by,
           tested_at,
           created_at,
-          updated_at
+          updated_at,
+          base_testcases (
+            image_url
+          )
         `)
         .eq('project_checklist_module_id', checklistModule.id)
 
       const mappedResults: ChecklistTestResult[] = (testResults || []).map(result => {
+        const baseTestcase = Array.isArray(result.base_testcases)
+          ? result.base_testcases[0]
+          : result.base_testcases
+
         return {
           id: result.id,
           projectChecklistModuleId: result.project_checklist_module_id,
@@ -441,6 +457,7 @@ export const checklistService = {
           testcaseTitle: result.testcase_title, // Use copied data
           testcaseDescription: result.testcase_description || undefined, // Use copied data
           testcasePriority: (result.testcase_priority || 'Medium') as 'High' | 'Medium' | 'Low', // Use copied data
+          testcaseImageUrl: baseTestcase?.image_url || undefined, // Reference image from library
           status: result.status,
           notes: result.notes || undefined,
           testedBy: result.tested_by || undefined,
@@ -741,7 +758,8 @@ export const checklistService = {
           base_testcases (
             title,
             description,
-            priority
+            priority,
+            image_url
           ),
           project_checklist_modules!inner (
             project_id
@@ -772,6 +790,7 @@ export const checklistService = {
         testcaseTitle: testcase?.title || 'Unknown',
         testcaseDescription: testcase?.description || undefined,
         testcasePriority: (testcase?.priority || 'Medium') as 'High' | 'Medium' | 'Low',
+        testcaseImageUrl: testcase?.image_url || undefined,
         status: data.status,
         notes: data.notes || undefined,
         testedBy: data.tested_by || undefined,
@@ -927,7 +946,8 @@ export const checklistService = {
             id,
             title,
             description,
-            priority
+            priority,
+            image_url
           ),
           testers (
             id,
@@ -1026,7 +1046,8 @@ export const checklistService = {
                 id: testcase?.id || testcaseId,
                 title: isCustom ? (firstResult.testcase_title || 'Unknown') : (testcase?.title || 'Unknown'),
                 description: isCustom ? firstResult.testcase_description : testcase?.description,
-                priority: (isCustom ? (firstResult.testcase_priority || 'Medium') : (testcase?.priority || 'Medium')) as 'High' | 'Medium' | 'Low'
+                priority: (isCustom ? (firstResult.testcase_priority || 'Medium') : (testcase?.priority || 'Medium')) as 'High' | 'Medium' | 'Low',
+                imageUrl: testcase?.image_url || undefined // Reference image from library
               },
               results: testerResults.map((r: any) => {
                 const { _displayOrder, ...rest } = r;
