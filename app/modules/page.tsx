@@ -297,6 +297,7 @@ export default function ModulesPage() {
       title: (data as CreateTestCaseDto).title,
       description: data.description,
       priority: (data as CreateTestCaseDto).priority,
+      imageUrl: data.imageUrl, // Include image URL from form
       order: 0, // Will be set correctly below
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -514,6 +515,7 @@ export default function ModulesPage() {
                     description: tc.description,
                     priority: tc.priority,
                     order_index: tc.order,
+                    image_url: tc.imageUrl,
                   }),
                 });
               } catch {
@@ -562,6 +564,7 @@ export default function ModulesPage() {
               description: testCase.description,
               priority: testCase.priority,
               order_index: testCase.order,
+              image_url: testCase.imageUrl,
             }),
           });
           const result = await response.json();
