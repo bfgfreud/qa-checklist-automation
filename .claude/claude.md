@@ -252,17 +252,21 @@ Otherwise, delegate to the appropriate specialized agent.
 ## Database Schema (High-Level)
 
 ### Tables
-1. **base_modules** - Master test modules
-2. **base_testcases** - Sub-testcases under modules
+1. **base_modules** - Master test modules (with thumbnail_url)
+2. **base_testcases** - Sub-testcases under modules (with image_url for reference images)
 3. **test_projects** - Testing cycles/patches
-4. **project_checklists** - Generated checklist items
-5. **checklist_items** - Individual execution records with status
+4. **project_checklist_modules** - Module instances added to project checklists
+5. **checklist_test_results** - Individual test result records with status, notes, and testcase_image_url for custom testcases
+6. **testers** - Tester profiles for multi-tester support
+7. **test_case_attachments** - Image attachments for test results
 
 ### Relationships
 - base_testcases → base_modules (many-to-one)
-- project_checklists → test_projects (many-to-one)
-- project_checklists → base_modules (many-to-one)
-- checklist_items → project_checklists (one-to-one with status)
+- project_checklist_modules → test_projects (many-to-one)
+- project_checklist_modules → base_modules (many-to-one, optional for custom modules)
+- checklist_test_results → project_checklist_modules (many-to-one)
+- checklist_test_results → testers (many-to-one)
+- test_case_attachments → checklist_test_results (many-to-one)
 
 ## Git Workflow
 
@@ -336,9 +340,9 @@ NEXT_PUBLIC_APP_URL=
 - **Decision**: Complete V2 rebuild from scratch with proper architecture
 - **Result**: V2 successfully rebuilt and deployed! ✅
 
-### Current State (2025-01-25)
+### Current State (2025-01-17)
 - **Phase**: Phase 4 COMPLETE ✅ - Phase 5 & 6 IN PROGRESS
-- **Overall Progress**: 90% Complete
+- **Overall Progress**: 95% Complete
 - **Live URL**: https://qa-checklist-automation.vercel.app/
 - **GitHub**: https://github.com/bfgfreud/qa-checklist-automation
 - **Deployment**: Auto-deploy on push to main ✅
@@ -353,7 +357,8 @@ NEXT_PUBLIC_APP_URL=
 6. ✅ **Custom Modules/Testcases**: Create custom modules and testcases not from library
 7. ✅ **Import from Project**: Copy checklist structure from another project
 8. ✅ **Module Thumbnails**: Upload thumbnail images for modules
-9. ✅ **File Cleanup**: Removed unused V1 code and files
+9. ✅ **Testcase Reference Images**: Upload reference images for testcases in Module Library and Project Edit Mode
+10. ✅ **File Cleanup**: Removed unused V1 code and files
 
 ### Completed Phases
 - ✅ **Phase 0**: Codebase cleanup and reorganization

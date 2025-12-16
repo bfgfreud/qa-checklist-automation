@@ -1,252 +1,190 @@
-# Frontend Domain - QA Checklist Automation
+# QA Checklist Automation - Documentation
 
-**Agent**: `frontend-dev`
-**Last Updated**: 2025-01-14
+**Last Updated**: 2025-01-17
 
 ## Overview
-This folder contains all frontend code for the QA Checklist Automation tool, including UI components, pages, hooks, and styling.
 
-## Folder Structure
-```
-frontend/
-├── app/                    # Next.js App Router pages
-│   ├── layout.tsx         # Root layout
-│   ├── page.tsx           # Home page
-│   ├── modules/           # Module library pages
-│   ├── projects/          # Test projects pages
-│   └── checklists/        # Checklist execution pages
-├── components/            # React components
-│   ├── ui/               # Reusable UI components
-│   ├── modules/          # Module-specific components
-│   ├── projects/         # Project-specific components
-│   └── checklists/       # Checklist-specific components
-├── hooks/                # Custom React hooks
-├── styles/               # Global styles
-└── public/               # Static assets
-```
+QA Checklist Automation is a web-based tool that helps QA teams manage and execute test checklists. It provides a centralized library of test modules and testcases that can be reused across different testing projects.
 
-## Current Tasks
-- [ ] Initialize Next.js project structure
-- [ ] Set up Tailwind CSS configuration
-- [ ] Create base UI components library
-- [ ] Build Module Library page
-- [ ] Build Test Projects page
-- [ ] Implement Drag-and-Drop Checklist Builder
-- [ ] Build Checklist Execution view
-- [ ] Implement Progress tracking UI
+## Live Application
+
+- **URL**: https://qa-checklist-automation.vercel.app/
+- **GitHub**: https://github.com/bfgfreud/qa-checklist-automation
+
+## Features
+
+### Module Library
+- Create and manage a library of reusable test modules
+- Each module contains multiple testcases
+- Add reference images to testcases for visual guidance
+- Upload thumbnail images for modules
+- Drag-and-drop reordering for modules and testcases
+- Tags for organizing modules
+
+### Project Management
+- Create test projects for different releases/patches
+- Three-mode project system:
+  - **Overview**: View project summary and progress
+  - **Edit Mode**: Build and customize the checklist
+  - **Work Mode**: Execute tests and track results
+- Archive and restore projects
+- Multi-tester support per project
+
+### Checklist Builder (Edit Mode)
+- Drag-and-drop modules from library to project checklist
+- Create custom modules not from the library
+- Add/remove testcases within modules
+- Create custom testcases with reference images
+- Reorder modules and testcases
+- Import checklist structure from another project
+- Instance labeling for multiple instances of same module
+
+### Checklist Execution (Work Mode)
+- Multi-tester support with dedicated columns per tester
+- Test statuses: Pending, Pass, Fail, Skipped
+- Add notes per test result
+- Upload evidence images per test result
+- Real-time progress tracking
+- Expandable/collapsible test descriptions
+- Reference image display on hover
+
+### Images & Attachments
+- **Module Thumbnails**: Visual identification for modules
+- **Testcase Reference Images**: Visual guidance for test steps
+- **Evidence Attachments**: Upload screenshots/images as test evidence
+- **Lightbox Viewer**: Full-size image viewing
 
 ## Tech Stack
-- **Framework**: Next.js 14+ (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Forms**: react-hook-form + zod
-- **Drag-and-Drop**: @dnd-kit/core, @dnd-kit/sortable
-- **Tables**: @tanstack/react-table
-- **Icons**: lucide-react
 
-## Key Components to Build
+- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes
+- **Database**: Supabase (PostgreSQL)
+- **Storage**: Supabase Storage
+- **Deployment**: Vercel
+- **Drag & Drop**: @dnd-kit
 
-### UI Components (`/components/ui/`)
-- `Button` - Primary button component
-- `Card` - Card container
-- `Input` - Form input field
-- `Table` - Data table wrapper
-- `Modal` - Modal dialog
-- `Badge` - Status badge
-- `ProgressBar` - Progress indicator
+## Database Tables
 
-### Feature Components
+| Table | Description |
+|-------|-------------|
+| `base_modules` | Master test modules library |
+| `base_testcases` | Testcases within modules (with reference images) |
+| `test_projects` | Testing projects/releases |
+| `project_checklist_modules` | Module instances in project checklists |
+| `checklist_test_results` | Individual test results per tester |
+| `testers` | Tester profiles |
+| `test_case_attachments` | Evidence images for test results |
 
-#### Module Management (`/components/modules/`)
-- `ModuleTable` - Display modules with actions
-- `ModuleForm` - Create/edit module form
-- `TestCaseList` - List testcases under module
+## API Endpoints
 
-#### Project Management (`/components/projects/`)
-- `ProjectCard` - Project card for list view
-- `ProjectForm` - Create/edit project form
-- `ProjectList` - List all projects
+### Modules
+- `GET /api/modules` - List all modules
+- `POST /api/modules` - Create module
+- `GET /api/modules/[id]` - Get module details
+- `PUT /api/modules/[id]` - Update module
+- `DELETE /api/modules/[id]` - Delete module
+- `POST /api/modules/thumbnail` - Upload module thumbnail
+- `PUT /api/modules/reorder` - Reorder modules
 
-#### Checklist (`/components/checklists/`)
-- `ChecklistBuilder` - Drag-and-drop builder interface
-- `ChecklistItem` - Individual checklist item with checkbox
-- `ChecklistProgress` - Progress bar and stats
-- `StatusDropdown` - Status selector (Not Started, In Progress, Completed, Blocked)
+### Testcases
+- `GET /api/modules/[id]/testcases` - List testcases in module
+- `POST /api/modules/[id]/testcases` - Create testcase
+- `PUT /api/testcases/[id]` - Update testcase
+- `DELETE /api/testcases/[id]` - Delete testcase
+- `POST /api/testcases/[id]/image` - Upload testcase reference image
+- `DELETE /api/testcases/[id]/image` - Remove testcase image
+- `POST /api/custom-testcase-images` - Upload image for new custom testcase
 
-## Pages to Build
+### Projects
+- `GET /api/projects` - List all projects
+- `POST /api/projects` - Create project
+- `GET /api/projects/[id]` - Get project details
+- `PUT /api/projects/[id]` - Update project
+- `DELETE /api/projects/[id]` - Delete project
+- `POST /api/projects/[id]/archive` - Archive project
+- `POST /api/projects/[id]/restore` - Restore archived project
+- `GET /api/projects/archive` - List archived projects
 
-### 1. Home Page (`/app/page.tsx`)
-- Dashboard overview
-- Quick stats
-- Recent projects
+### Checklists
+- `GET /api/projects/[id]/checklist` - Get project checklist
+- `POST /api/checklists/modules` - Add module to checklist
+- `DELETE /api/checklists/modules/[id]` - Remove module from checklist
+- `POST /api/checklists/modules/[id]/testcases` - Add custom testcase
+- `PUT /api/checklists/test-results/[id]` - Update test result
 
-### 2. Module Library (`/app/modules/page.tsx`)
-- Table of all base modules
-- Add/Edit/Delete actions
-- View testcases for each module
+### Testers
+- `GET /api/testers` - List all testers
+- `POST /api/testers` - Create tester
+- `GET /api/projects/[id]/testers` - List project testers
+- `POST /api/projects/[id]/testers` - Assign tester to project
 
-### 3. Projects List (`/app/projects/page.tsx`)
-- Grid/List of all test projects
-- Create new project button
-- Filter and search
+### Attachments
+- `GET /api/test-results/[id]/attachments` - List attachments
+- `POST /api/test-results/[id]/attachments` - Upload attachment
+- `DELETE /api/test-results/[id]/attachments/[attachmentId]` - Delete attachment
 
-### 4. Project Detail (`/app/projects/[id]/page.tsx`)
-- Project information
-- Navigation to builder and checklist
+## User Guide
 
-### 5. Checklist Builder (`/app/projects/[id]/builder/page.tsx`)
-- Drag-and-drop interface
-- Module library on left
-- Selected modules on right
-- Generate checklist button
+### Getting Started
+1. **Create Modules**: Go to Module Library and create test modules with testcases
+2. **Create Project**: Go to Projects and create a new testing project
+3. **Assign Testers**: Add testers to the project
+4. **Build Checklist**: In Edit Mode, drag modules from library to build your checklist
+5. **Execute Tests**: In Work Mode, testers can mark tests and add evidence
 
-### 6. Checklist Execution (`/app/projects/[id]/checklist/page.tsx`)
-- List of checklist items
-- Checkboxes and status dropdowns
-- Progress bar
-- Notes section
+### Adding Reference Images
+1. In Module Library, click on a testcase to edit
+2. Click the image upload area to select an image
+3. The image will appear as a thumbnail indicator
+4. Hover over the indicator to preview, click for full size
 
-## API Integration
+### Multi-Tester Workflow
+1. Assign multiple testers to a project
+2. Each tester gets their own column in Work Mode
+3. Testers can only update their own results
+4. Progress shows weakest status across all testers
 
-### Backend API Routes
-Consume these APIs (created by Backend Agent):
+## Development
 
-#### Modules
-- `GET /backend/api/modules` - Get all modules
-- `POST /backend/api/modules` - Create module
-- `PUT /backend/api/modules/[id]` - Update module
-- `DELETE /backend/api/modules/[id]` - Delete module
-- `GET /backend/api/modules/[id]/testcases` - Get testcases
+See `PROJECT_STRUCTURE.md` for detailed folder organization.
 
-#### Projects
-- `GET /backend/api/projects` - Get all projects
-- `POST /backend/api/projects` - Create project
-- `GET /backend/api/projects/[id]` - Get project details
-- `PUT /backend/api/projects/[id]` - Update project
-- `DELETE /backend/api/projects/[id]` - Delete project
+### Local Setup
+```bash
+# Clone repository
+git clone https://github.com/bfgfreud/qa-checklist-automation.git
+cd qa-checklist-automation
 
-#### Checklists
-- `POST /backend/api/projects/[id]/checklist/generate` - Generate checklist
-- `GET /backend/api/projects/[id]/checklist` - Get checklist
-- `PUT /backend/api/projects/[id]/checklist/[itemId]` - Update status
+# Install dependencies
+npm install
 
-### API Client Pattern
-```typescript
-// Example: /frontend/hooks/useModules.ts
-export function useModules() {
-  const [modules, setModules] = useState([])
-  const [loading, setLoading] = useState(true)
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your Supabase credentials
 
-  useEffect(() => {
-    fetch('/backend/api/modules')
-      .then(res => res.json())
-      .then(data => setModules(data.data))
-      .finally(() => setLoading(false))
-  }, [])
-
-  return { modules, loading }
-}
+# Run development server
+npm run dev
 ```
 
-## Styling Guidelines
+### Environment Variables
+```
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
-### Tailwind CSS
-- Use Tailwind utility classes
-- Create custom classes sparingly in `/styles/globals.css`
-- Follow mobile-first approach
+## Changelog
 
-### Color Palette
-- Primary: Blue (`bg-blue-600`, `text-blue-600`)
-- Success: Green (`bg-green-500`)
-- Warning: Yellow (`bg-yellow-500`)
-- Error: Red (`bg-red-500`)
-- Neutral: Gray (`bg-gray-100`, `text-gray-700`)
+### 2025-01-17
+- Added testcase reference images for Module Library
+- Added testcase reference images for custom testcases in Edit Mode
+- Images display in Overview, Edit Mode, and Work Mode
 
-### Status Colors
-- Not Started: Gray
-- In Progress: Blue
-- Completed: Green
-- Blocked: Red
-
-## Development Workflow
-
-### 1. Before Starting a Task
-- Read this README
-- Check `/shared/types/` for type definitions
-- Review API spec in `/docs/api-spec.md` (when available)
-
-### 2. During Development
-- Create components in appropriate folders
-- Use TypeScript for all files
-- Import shared types from `/shared/types/`
-- Test UI on different screen sizes
-- Handle loading and error states
-
-### 3. After Completing a Task
-- Update this README with progress
-- Push to feature branch
-- Report to Coordinator
-- Update task checklist above
-
-## Code Standards
-
-### TypeScript
-- Always type props and state
-- Use interfaces for component props
-- Export types when shared
-
-### Components
-- Use functional components with hooks
-- Extract reusable logic into custom hooks
-- Keep components small and focused
-
-### File Naming
-- Components: `PascalCase.tsx`
-- Hooks: `useCamelCase.ts`
-- Pages: Next.js convention (lowercase)
-
-## Testing
-- Manual testing on Chrome, Firefox, Safari
-- Test responsive design (mobile, tablet, desktop)
-- Test keyboard navigation
-- Add `data-testid` attributes for QA Agent
-
-## Git Workflow
-- Branch: `feature/frontend-<feature-name>`
-- Commit: `feat(ui): <description>`
-- Push frequently
-
-## Communication
-
-### With Backend Agent
-- Discuss API contracts and data structures
-- Request new endpoints if needed
-- Report API issues
-
-### With DevOps Agent
-- Request environment variables
-- Report build issues
-- Coordinate on deployment
-
-### With QA Agent
-- Add test-friendly attributes
-- Fix reported UI bugs
-- Coordinate on test scenarios
-
-### With Coordinator
-- Report progress on tasks
-- Ask for clarification on requirements
-- Escalate blockers
-
-## Resources
-- [Next.js Docs](https://nextjs.org/docs)
-- [Tailwind CSS Docs](https://tailwindcss.com/docs)
-- [React Hook Form](https://react-hook-form.com/)
-- [@dnd-kit](https://dndkit.com/)
-- [TanStack Table](https://tanstack.com/table)
-
-## Notes
-- Focus on user experience and accessibility
-- Keep UI consistent across all pages
-- Mobile-first, responsive design
-- Handle errors gracefully with user-friendly messages
+### 2025-01-25 (V2 Release)
+- Complete rebuild with multi-tester support
+- Three-mode project system (Overview/Edit/Work)
+- Custom modules and custom testcases
+- Import checklist from another project
+- Module thumbnails
+- Test result attachments with lightbox
+- Project archive/restore functionality

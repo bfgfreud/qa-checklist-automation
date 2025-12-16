@@ -142,6 +142,20 @@ For now, you can explore:
 - **SQL Editor**: Run SQL queries
 - **Database**: See connection strings
 
+### 3.5 Set Up Storage Buckets
+The application uses Supabase Storage for images. Create these buckets:
+
+1. Go to Storage in the Supabase dashboard
+2. Create bucket: `testcase-images` (public)
+   - Used for: module thumbnails, testcase reference images
+3. Create bucket: `test-attachments` (public)
+   - Used for: test result evidence images
+
+Or use the setup API after deployment:
+```
+POST /api/setup/storage
+```
+
 ---
 
 ## Step 4: Connect Everything Together

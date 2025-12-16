@@ -1,165 +1,234 @@
 # Project Structure - QA Checklist Automation
 
+**Last Updated**: 2025-01-17
+
 ## Folder Organization
 
 ```
 qa-checklist-automation/
-├── frontend/                    # Frontend Agent Domain
-│   ├── README.md               # Frontend domain documentation
-│   ├── app/                    # Next.js app router
-│   │   ├── layout.tsx
-│   │   ├── page.tsx
-│   │   ├── modules/            # Module library pages
-│   │   ├── projects/           # Test projects pages
-│   │   └── checklists/         # Checklist execution pages
-│   ├── components/             # React components
-│   │   ├── ui/                 # Reusable UI components
-│   │   ├── modules/            # Module-specific components
-│   │   ├── projects/           # Project-specific components
-│   │   └── checklists/         # Checklist-specific components
-│   ├── hooks/                  # Custom React hooks
-│   ├── styles/                 # Global styles, CSS modules
-│   └── public/                 # Static assets
+├── app/                         # Next.js App Router (pages & API routes)
+│   ├── layout.tsx              # Root layout with global styles
+│   ├── page.tsx                # Home page (redirects to /projects)
+│   ├── globals.css             # Global Tailwind styles
+│   ├── modules/                # Module Library page
+│   │   └── page.tsx            # CRUD for base modules and testcases
+│   ├── projects/               # Projects pages
+│   │   ├── page.tsx            # Projects list
+│   │   └── [projectId]/        # Dynamic project routes
+│   │       ├── page.tsx        # Project Overview mode
+│   │       ├── edit/           # Project Edit mode
+│   │       │   └── page.tsx    # Checklist builder with drag-and-drop
+│   │       └── work/           # Project Work mode
+│   │           └── page.tsx    # Checklist execution UI
+│   ├── login/                  # Login page
+│   │   └── page.tsx
+│   ├── auth/                   # Auth callback
+│   │   └── callback/
+│   │       └── route.ts
+│   └── api/                    # API Routes
+│       ├── modules/            # Module CRUD APIs
+│       │   ├── route.ts        # GET all, POST new module
+│       │   ├── reorder/        # PUT reorder modules
+│       │   ├── thumbnail/      # POST upload module thumbnail
+│       │   └── [id]/           # Single module operations
+│       │       ├── route.ts    # GET, PUT, DELETE module
+│       │       └── testcases/  # Testcase CRUD for module
+│       │           └── route.ts
+│       ├── projects/           # Project CRUD APIs
+│       │   ├── route.ts        # GET all, POST new project
+│       │   ├── archive/        # GET archived projects
+│       │   └── [projectId]/    # Single project operations
+│       │       ├── route.ts    # GET, PUT, DELETE project
+│       │       ├── checklist/  # Checklist operations
+│       │       │   └── route.ts
+│       │       ├── archive/    # POST archive project
+│       │       ├── restore/    # POST restore project
+│       │       └── testers/    # Project tester management
+│       │           ├── route.ts
+│       │           └── [testerId]/
+│       │               └── route.ts
+│       ├── checklists/         # Checklist APIs
+│       │   ├── modules/        # Checklist module operations
+│       │   │   ├── route.ts    # POST add module to checklist
+│       │   │   └── [id]/       # Single checklist module
+│       │   │       ├── route.ts
+│       │   │       └── testcases/
+│       │   │           └── route.ts  # POST custom testcase
+│       │   └── test-results/   # Test result operations
+│       │       └── [id]/
+│       │           └── route.ts  # PUT update test result
+│       ├── testcases/          # Testcase APIs
+│       │   ├── reorder/        # PUT reorder testcases
+│       │   └── [id]/           # Single testcase operations
+│       │       ├── route.ts    # GET, PUT, DELETE
+│       │       └── image/      # POST/DELETE testcase image
+│       │           └── route.ts
+│       ├── custom-testcase-images/  # Upload images for new custom testcases
+│       │   └── route.ts
+│       ├── testers/            # Tester APIs
+│       │   ├── route.ts        # GET all, POST new tester
+│       │   └── [id]/
+│       │       └── route.ts    # GET, PUT, DELETE tester
+│       ├── test-results/       # Test result attachments
+│       │   └── [id]/
+│       │       └── attachments/
+│       │           └── route.ts
+│       └── setup/              # Setup utilities
+│           └── storage/
+│               └── route.ts    # POST create storage buckets
 │
-├── backend/                     # Backend Agent Domain
-│   ├── README.md               # Backend domain documentation
-│   ├── api/                    # API route handlers (Next.js API routes)
-│   │   ├── modules/
-│   │   ├── projects/
-│   │   └── checklists/
+├── components/                  # React Components
+│   ├── ui/                     # Reusable UI components
+│   │   ├── Button.tsx
+│   │   ├── Input.tsx
+│   │   ├── Modal.tsx
+│   │   ├── Select.tsx
+│   │   ├── Textarea.tsx
+│   │   ├── Card.tsx
+│   │   ├── Badge.tsx
+│   │   ├── TruncatedText.tsx
+│   │   ├── ImageIndicator.tsx  # Testcase reference image indicator
+│   │   └── ...
+│   ├── modules/                # Module-specific components
+│   │   ├── ModuleCard.tsx
+│   │   ├── ModuleForm.tsx
+│   │   ├── TestCaseForm.tsx
+│   │   ├── TestCaseItem.tsx
+│   │   ├── TestCaseImageUpload.tsx  # Image upload for testcases
+│   │   └── SortableTestCase.tsx
+│   ├── projects/               # Project-specific components
+│   │   ├── ProjectCard.tsx
+│   │   ├── ProjectForm.tsx
+│   │   └── ProjectCardSkeleton.tsx
+│   └── checklists/             # Checklist components
+│       ├── AddModuleDialog.tsx
+│       ├── AddTestCaseDialog.tsx
+│       ├── ImportChecklistDialog.tsx
+│       ├── TesterCard.tsx
+│       └── ...
+│
+├── lib/                         # Utilities and Services
+│   ├── supabase.ts             # Supabase client configuration
 │   ├── services/               # Business logic layer
-│   │   ├── moduleService.ts
-│   │   ├── projectService.ts
-│   │   └── checklistService.ts
-│   ├── models/                 # Data models and types
-│   ├── validations/            # Zod schemas for validation
-│   └── db/                     # Database utilities
-│       ├── supabase.ts         # Supabase client
-│       ├── migrations/         # SQL migration files
-│       └── seeds/              # Seed data for development
+│   │   ├── moduleService.ts    # Module CRUD operations
+│   │   ├── projectService.ts   # Project CRUD operations
+│   │   ├── checklistService.ts # Checklist operations
+│   │   ├── testerService.ts    # Tester management
+│   │   └── attachmentService.ts # File attachment handling
+│   └── validations/            # Zod validation schemas
+│       ├── module.schema.ts    # Module/testcase validation
+│       ├── project.schema.ts   # Project validation
+│       └── checklist.schema.ts # Checklist validation
 │
-├── integration/                 # DevOps/Integration Agent Domain
-│   ├── README.md               # Integration documentation
-│   ├── config/                 # Configuration files
-│   │   ├── next.config.js
-│   │   ├── tailwind.config.js
-│   │   └── tsconfig.json
-│   ├── scripts/                # Build and deployment scripts
-│   ├── .github/
-│   │   └── workflows/          # CI/CD workflows
-│   └── docker/                 # Docker files (future)
+├── types/                       # TypeScript type definitions
+│   ├── module.ts               # Module and testcase types
+│   ├── project.ts              # Project types
+│   ├── checklist.ts            # Checklist and test result types
+│   ├── tester.ts               # Tester types
+│   └── attachment.ts           # Attachment types
 │
-├── tests/                       # QA Agent Domain
-│   ├── README.md               # Testing documentation
-│   ├── unit/                   # Unit tests
-│   │   ├── frontend/
-│   │   └── backend/
-│   ├── integration/            # Integration tests
-│   │   └── api/
-│   ├── e2e/                    # End-to-end tests
-│   │   ├── module-management.spec.ts
-│   │   ├── project-creation.spec.ts
-│   │   └── checklist-execution.spec.ts
-│   ├── fixtures/               # Test data
-│   └── utils/                  # Test utilities
+├── supabase/                    # Database migrations
+│   └── migrations/             # SQL migration files
+│       ├── 001_initial_schema.sql
+│       ├── 002_add_testers.sql
+│       ├── 003_add_attachments.sql
+│       ├── 20250117_add_testcase_image.sql
+│       └── 20250117_add_custom_testcase_image.sql
 │
-├── shared/                      # Shared utilities (accessible by all)
-│   ├── README.md               # Shared resources documentation
-│   ├── types/                  # Shared TypeScript types
-│   ├── constants/              # Application constants
-│   └── utils/                  # Shared utility functions
-│
-├── docs/                        # Project documentation
-│   ├── architecture.md
-│   ├── api-spec.md
-│   └── user-guide.md
+├── public/                      # Static assets
+│   ├── favicon.ico
+│   ├── icon.png
+│   └── apple-icon.png
 │
 ├── .claude/                     # Claude Code configuration
-│   ├── claude.md               # Main coordinator instructions
-│   └── commands/               # Custom slash commands
+│   ├── CLAUDE.md               # Main project documentation
+│   └── agents/                 # Agent prompt files
+│       ├── frontend-dev.md
+│       ├── backend-dev-qa-automation.md
+│       ├── devops-integration-specialist.md
+│       └── qa-automation-tester.md
+│
+├── docs/                        # Additional documentation
+│   └── README.md
+│
+├── integration/                 # DevOps/Integration files
+│   └── README.md
+│
+├── tests/                       # Test files (future)
+│   └── README.md
 │
 ├── .env.local                   # Local environment variables (gitignored)
-├── .env.example                # Environment variable template
+├── .env.example                 # Environment variable template
 ├── .gitignore
 ├── package.json
-├── SETUP_GUIDE.md
+├── tsconfig.json
+├── tailwind.config.ts
+├── next.config.js
+├── middleware.ts               # Auth middleware
+├── PROJECT_STRUCTURE.md        # This file
+├── SETUP_GUIDE.md              # Initial setup instructions
 └── README.md                   # Project README
-
 ```
 
-## Agent Domain Assignments
+## Key Features by Area
 
-### Frontend Agent
-**Primary Folders**: `/frontend/**/*`
-**Can Read**: `/backend/models/`, `/shared/`
-**Cannot Modify**: `/backend/`, `/integration/`, `/tests/`
+### Module Library (`/app/modules/`)
+- CRUD operations for base modules
+- CRUD operations for testcases within modules
+- Drag-and-drop reordering for modules and testcases
+- Module thumbnail image upload
+- Testcase reference image upload
 
-### Backend Agent
-**Primary Folders**: `/backend/**/*`
-**Can Read**: `/shared/`
-**Cannot Modify**: `/frontend/`, `/integration/`, `/tests/`
+### Project Management (`/app/projects/`)
+- Create, edit, archive, restore projects
+- Multi-tester assignment per project
+- Three-mode system: Overview, Edit, Work
 
-### DevOps/Integration Agent
-**Primary Folders**: `/integration/**/*`, root config files
-**Can Read**: All folders (for integration purposes)
-**Can Modify**: Configuration files, CI/CD, deployment scripts
-**Cannot Modify**: Business logic in `/frontend/` or `/backend/`
+### Project Edit Mode (`/app/projects/[projectId]/edit/`)
+- Drag-and-drop modules from library to checklist
+- Add custom modules (not from library)
+- Add/remove testcases from modules
+- Create custom testcases with reference images
+- Reorder modules and testcases
+- Import checklist from another project
 
-### QA Agent
-**Primary Folders**: `/tests/**/*`
-**Can Read**: All folders (for testing purposes)
-**Can Modify**: Only test files
-**Cannot Modify**: Application code (but reports bugs)
+### Project Work Mode (`/app/projects/[projectId]/work/`)
+- Execute checklist with Pass/Fail/Pending/Skipped statuses
+- Multi-tester support (each tester has their own column)
+- Add notes per test result
+- Upload evidence images per test result
+- Real-time progress tracking with 5-second polling
 
-### Shared Domain
-**Primary Folders**: `/shared/**/*`
-**Accessible By**: All agents
-**Modified By**: Any agent with approval from Coordinator
+### API Structure
+- RESTful API routes using Next.js App Router
+- Zod validation for all inputs
+- Service layer pattern for business logic
+- Supabase for database and file storage
 
-## Benefits of This Structure
+## Image Storage
 
-1. **Clear Boundaries**: Each agent knows exactly which folders they own
-2. **Easy Navigation**: Developers can find code quickly
-3. **README.md per Domain**: Each folder has documentation specific to that domain
-4. **Reduced Conflicts**: Agents work in separate folders, fewer merge conflicts
-5. **Scalability**: Easy to add new domains or split existing ones
-6. **Testing Isolation**: Tests are separate but can access all code
+Images are stored in Supabase Storage:
+- **Bucket**: `testcase-images`
+  - Module thumbnails: `{moduleId}/{filename}`
+  - Library testcase images: `{testcaseId}/{filename}`
+  - Custom testcase images: `custom/{uuid}.{ext}`
+- **Bucket**: `test-attachments`
+  - Test result evidence images
 
-## File Naming Conventions
+## Environment Variables
 
-### Frontend
-- Components: `PascalCase.tsx` (e.g., `ModuleTable.tsx`)
-- Hooks: `useCamelCase.ts` (e.g., `useModules.ts`)
-- Styles: `kebab-case.css` or `ComponentName.module.css`
-
-### Backend
-- Services: `camelCase.ts` (e.g., `moduleService.ts`)
-- Models: `PascalCase.ts` (e.g., `Module.ts`)
-- API Routes: `route.ts` inside feature folders
-- Validations: `camelCase.schema.ts` (e.g., `module.schema.ts`)
-
-### Tests
-- Unit: `fileName.test.ts` or `fileName.spec.ts`
-- E2E: `feature-name.spec.ts`
-
-## Import Path Aliases
-
-Configure in `tsconfig.json`:
-```json
-{
-  "compilerOptions": {
-    "paths": {
-      "@/frontend/*": ["./frontend/*"],
-      "@/backend/*": ["./backend/*"],
-      "@/shared/*": ["./shared/*"],
-      "@/tests/*": ["./tests/*"]
-    }
-  }
-}
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-Usage:
-```typescript
-// Instead of: import { Module } from '../../../backend/models/Module'
-import { Module } from '@/backend/models/Module'
-```
+## Tech Stack
+
+- **Frontend**: Next.js 14 (App Router), React, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes, Zod validation
+- **Database**: Supabase (PostgreSQL)
+- **Storage**: Supabase Storage
+- **Deployment**: Vercel (auto-deploy from GitHub)
+- **Drag & Drop**: @dnd-kit/core, @dnd-kit/sortable
