@@ -7,15 +7,15 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
 /**
- * POST /api/testcases/[testCaseId]/image
+ * POST /api/testcases/[id]/image
  * Upload an image for a testcase
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { testCaseId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const testCaseId = params.testCaseId
+    const testCaseId = params.id
 
     // Validate UUID format
     const uuidSchema = z.string().uuid()
@@ -150,15 +150,15 @@ export async function POST(
 }
 
 /**
- * DELETE /api/testcases/[testCaseId]/image
+ * DELETE /api/testcases/[id]/image
  * Delete the image for a testcase
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { testCaseId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const testCaseId = params.testCaseId
+    const testCaseId = params.id
 
     // Validate UUID format
     const uuidSchema = z.string().uuid()
