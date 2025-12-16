@@ -11,6 +11,7 @@ export interface TestCase {
   description?: string;
   priority: Priority;
   order: number;
+  imageUrl?: string;  // Documentation/reference image for the testcase
   createdAt: string;
   updatedAt: string;
 }
@@ -50,12 +51,14 @@ export interface CreateTestCaseDto {
   title: string;
   description?: string;
   priority: Priority;
+  imageUrl?: string;
 }
 
 export interface UpdateTestCaseDto {
   title?: string;
   description?: string;
   priority?: Priority;
+  imageUrl?: string;
 }
 
 export interface ReorderModulesDto {

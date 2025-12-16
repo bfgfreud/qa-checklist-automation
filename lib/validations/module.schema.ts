@@ -89,7 +89,11 @@ export const createTestCaseSchema = z.object({
     .int()
     .min(0)
     .optional()
-    .default(0)
+    .default(0),
+  image_url: z.string()
+    .url('Invalid image URL')
+    .optional()
+    .nullable()
 })
 
 export const updateTestCaseSchema = z.object({
@@ -107,7 +111,11 @@ export const updateTestCaseSchema = z.object({
   order_index: z.number()
     .int()
     .min(0)
+    .optional(),
+  image_url: z.string()
+    .url('Invalid image URL')
     .optional()
+    .nullable()
 })
 
 export const reorderTestCasesSchema = z.object({

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
+import { TestCaseImageUpload } from '@/components/modules/TestCaseImageUpload';
 import {
   TestCase,
   Priority,
@@ -36,6 +37,7 @@ export const TestCaseForm: React.FC<TestCaseFormProps> = ({
     title: '',
     description: '',
     priority: 'Medium',
+    imageUrl: undefined,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -46,9 +48,10 @@ export const TestCaseForm: React.FC<TestCaseFormProps> = ({
         title: testCase.title,
         description: testCase.description || '',
         priority: testCase.priority,
+        imageUrl: testCase.imageUrl,
       });
     } else {
-      setFormData({ title: '', description: '', priority: 'Medium' });
+      setFormData({ title: '', description: '', priority: 'Medium', imageUrl: undefined });
     }
     setErrors({});
   }, [testCase, isOpen]);
@@ -116,6 +119,12 @@ export const TestCaseForm: React.FC<TestCaseFormProps> = ({
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           placeholder="Detailed test case description..."
           rows={3}
+        />
+
+        <TestCaseImageUpload
+          value={formData.imageUrl}
+          onChange={(url) => setFormData({ ...formData, imageUrl: url || undefined })}
+          testCaseId={testCase?.id}
         />
 
         <Select

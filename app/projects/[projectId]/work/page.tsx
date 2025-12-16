@@ -10,6 +10,7 @@ import { TesterAvatar } from '@/components/ui/TesterAvatar';
 import { ImageUploader } from '@/components/ui/ImageUploader';
 import { ImageGallery } from '@/components/ui/ImageGallery';
 import { TruncatedText } from '@/components/ui/TruncatedText';
+import { ImageIndicator } from '@/components/ui/ImageIndicator';
 import { useCurrentTester } from '@/contexts/TesterContext';
 import { linkifyText } from '@/lib/utils/linkify';
 
@@ -1050,6 +1051,15 @@ export default function WorkingModePage() {
                                     </>
                                   )}
                                 </div>
+
+                                {/* Reference Image Indicator (from testcase template) */}
+                                {testCase.testCase.imageUrl && (
+                                  <ImageIndicator
+                                    imageUrl={testCase.testCase.imageUrl}
+                                    alt={`${testCase.testCase.title} reference image`}
+                                    size="xs"
+                                  />
+                                )}
 
                                 {/* Priority Badge (optional, small) */}
                                 <span className={`text-xs px-1.5 py-0.5 rounded flex-shrink-0 ${

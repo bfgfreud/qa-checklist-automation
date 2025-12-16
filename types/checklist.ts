@@ -34,6 +34,7 @@ export interface ChecklistTestResult {
   testcaseTitle: string; // Denormalized from base_testcases for display
   testcaseDescription?: string; // Denormalized from base_testcases
   testcasePriority: 'High' | 'Medium' | 'Low'; // Denormalized from base_testcases
+  testcaseImageUrl?: string; // Reference image from base_testcases
   status: TestStatus;
   notes?: string;
   testedBy?: string;
@@ -148,6 +149,7 @@ export interface TestCaseWithResults {
     title: string;
     description?: string;
     priority: 'High' | 'Medium' | 'Low';
+    imageUrl?: string; // Reference image
   };
   results: TestResultWithTester[];
   overallStatus: TestStatus; // Weakest status across all testers

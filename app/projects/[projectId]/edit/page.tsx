@@ -24,6 +24,7 @@ import { Module, Priority, TestCase } from '@/types/module';
 import { ChecklistModuleWithResults } from '@/types/checklist';
 import { Button } from '@/components/ui/Button';
 import { TruncatedText } from '@/components/ui/TruncatedText';
+import { ImageIndicator } from '@/components/ui/ImageIndicator';
 import { AddModuleDialog } from '@/components/checklists/AddModuleDialog';
 import { AddTestCaseDialog } from '@/components/checklists/AddTestCaseDialog';
 import { ImportChecklistDialog } from '@/components/checklists/ImportChecklistDialog';
@@ -261,6 +262,13 @@ function SortableTestCase({
           />
         )}
       </div>
+      {testResult.testcaseImageUrl && (
+        <ImageIndicator
+          imageUrl={testResult.testcaseImageUrl}
+          alt={`${testResult.testcaseTitle} reference image`}
+          size="xs"
+        />
+      )}
       <span
         className={`text-xs px-2 py-0.5 rounded ${
           testResult.testcasePriority === 'High'

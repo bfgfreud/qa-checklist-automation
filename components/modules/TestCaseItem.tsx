@@ -7,6 +7,7 @@ import { TestCase, Module } from '@/types/module';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { TruncatedText } from '@/components/ui/TruncatedText';
+import { ImageIndicator } from '@/components/ui/ImageIndicator';
 
 export interface TestCaseItemProps {
   testCase: TestCase;
@@ -81,6 +82,14 @@ export const TestCaseItem: React.FC<TestCaseItemProps> = ({ testCase, onEdit, on
                 />
               )}
             </div>
+            {/* Image Indicator */}
+            {testCase.imageUrl && (
+              <ImageIndicator
+                imageUrl={testCase.imageUrl}
+                alt={`${testCase.title} reference image`}
+                size={isCompact ? 'xs' : 'sm'}
+              />
+            )}
             <Badge priority={testCase.priority} />
           </div>
         </div>

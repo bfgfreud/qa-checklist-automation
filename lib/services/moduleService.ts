@@ -361,7 +361,8 @@ export const moduleService = {
           title: input.title,
           description: input.description || null,
           priority: input.priority || 'Medium',
-          order_index: input.order_index ?? nextOrderIndex
+          order_index: input.order_index ?? nextOrderIndex,
+          image_url: input.image_url || null
         }])
         .select()
         .single()
@@ -388,6 +389,7 @@ export const moduleService = {
       if (input.description !== undefined) updateData.description = input.description
       if (input.priority !== undefined) updateData.priority = input.priority
       if (input.order_index !== undefined) updateData.order_index = input.order_index
+      if (input.image_url !== undefined) updateData.image_url = input.image_url
 
       const { data, error } = await supabase
         .from('base_testcases')

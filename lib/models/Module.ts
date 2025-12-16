@@ -30,6 +30,7 @@ export interface TestCase {
   description: string | null
   priority: TestCasePriority
   order_index: number
+  image_url: string | null  // Documentation/reference image URL
   created_at: string
   updated_at: string
 }
@@ -60,6 +61,7 @@ export interface TestCaseRow {
   description: string | null
   priority: string
   order_index: number
+  image_url: string | null
   created_at: string
   updated_at: string
 }
