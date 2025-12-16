@@ -35,10 +35,11 @@ export const projectService = {
    */
   async getArchivedProjects(): Promise<{ success: boolean; data?: Project[]; error?: string }> {
     try {
+      // Use filter with 'not.is.null' to get records where deleted_at is NOT null
       const { data, error } = await supabase
         .from('test_projects')
         .select('*')
-        .not('deleted_at', 'is', null)
+        .filter('deleted_at', 'not.is', null)
         .order('deleted_at', { ascending: false })
 
       if (error) {
@@ -187,7 +188,7 @@ export const projectService = {
           deleted_by: null
         })
         .eq('id', id)
-        .not('deleted_at', 'is', null) // Only restore if archived
+        .filter('deleted_at', 'not.is', null) // Only restore if archived
         .select()
         .single()
 

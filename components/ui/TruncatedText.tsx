@@ -20,26 +20,32 @@ export const TruncatedText: React.FC<TruncatedTextProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isTruncated, setIsTruncated] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+  // Track if it WAS truncated before expanding (so we can collapse it back)
+  const [wasTruncated, setWasTruncated] = useState(false);
   const textRef = useRef<HTMLElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Check if text is actually truncated
+  // Check if text is actually truncated (only when not expanded)
   const checkTruncation = useCallback(() => {
+    if (isExpanded) return; // Don't check when expanded
     const element = textRef.current;
     if (element) {
       const isOverflowing = element.scrollWidth > element.clientWidth ||
                            element.scrollHeight > element.clientHeight;
       setIsTruncated(isOverflowing);
+      if (isOverflowing) {
+        setWasTruncated(true); // Remember it was truncated
+      }
     }
-  }, []);
+  }, [isExpanded]);
 
   useEffect(() => {
     checkTruncation();
     // Recheck on window resize
     window.addEventListener('resize', checkTruncation);
     return () => window.removeEventListener('resize', checkTruncation);
-  }, [checkTruncation, text, isExpanded]);
+  }, [checkTruncation, text]);
 
   // Also check after a brief delay to handle dynamic content
   useEffect(() => {
@@ -47,11 +53,20 @@ export const TruncatedText: React.FC<TruncatedTextProps> = ({
     return () => clearTimeout(timeout);
   }, [checkTruncation, text]);
 
-  const handleClick = () => {
-    if (expandOnClick && isTruncated) {
+  const handleTextClick = (e: React.MouseEvent) => {
+    // Only toggle if text was truncatable
+    if (expandOnClick && (isTruncated || wasTruncated)) {
+      e.stopPropagation();
       setIsExpanded(!isExpanded);
       setShowTooltip(false);
     }
+  };
+
+  const handleCollapseClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsExpanded(false);
+    setShowTooltip(false);
   };
 
   const handleMouseEnter = () => {
@@ -107,7 +122,7 @@ export const TruncatedText: React.FC<TruncatedTextProps> = ({
     ? 'whitespace-pre-wrap break-words'
     : truncationClass;
 
-  const interactiveClasses = isTruncated && expandOnClick
+  const interactiveClasses = (isTruncated || wasTruncated) && expandOnClick
     ? 'cursor-pointer hover:text-gray-200'
     : '';
 
@@ -116,7 +131,7 @@ export const TruncatedText: React.FC<TruncatedTextProps> = ({
       <Component
         ref={textRef as React.RefObject<HTMLSpanElement & HTMLParagraphElement & HTMLDivElement>}
         className={`${baseClasses} ${interactiveClasses} ${className}`}
-        onClick={handleClick}
+        onClick={handleTextClick}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         title={isTruncated && !expandOnClick ? text : undefined}
@@ -129,14 +144,20 @@ export const TruncatedText: React.FC<TruncatedTextProps> = ({
             </svg>
           </span>
         )}
-        {isExpanded && expandOnClick && (
-          <span className="text-gray-500 ml-1 text-xs inline-flex items-center">
-            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 15l7-7 7 7" />
-            </svg>
-          </span>
-        )}
       </Component>
+      {/* Separate collapse button when expanded - outside the text flow */}
+      {isExpanded && expandOnClick && wasTruncated && (
+        <button
+          type="button"
+          onClick={handleCollapseClick}
+          className="text-gray-500 hover:text-gray-300 ml-1 text-xs inline-flex items-center cursor-pointer transition-colors"
+          aria-label="Collapse text"
+        >
+          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M5 15l7-7 7 7" />
+          </svg>
+        </button>
+      )}
 
       {/* Custom Tooltip */}
       {showTooltip && (
